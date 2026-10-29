@@ -1,6 +1,7 @@
 import express from "express";
 import companyRoutes from "./routes/companyRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import socialLinkRoutes from "./routes/socialLinkRoutes.js";
 
 // 1. Create the Express application
 const app = express();
@@ -10,6 +11,7 @@ const app = express();
 app.use(express.json());
 app.use("/api/companies", companyRoutes);
 app.use("/api/profiles", profileRoutes);
+app.use("/api/social-links", socialLinkRoutes);
 
 // 3. Export the application
 app.get("/api/health", (req, res) => {

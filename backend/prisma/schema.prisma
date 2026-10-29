@@ -1,0 +1,75 @@
+generator client {
+  provider               = "prisma-client-js"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "js"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id         String  @id @default(cuid())
+  name       String
+  logoUrl    String?
+  fontFamily String  @default("Raleway")
+
+  profiles Profile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  publicId    String  @unique
+  fullName    String
+  jobTitle    String?
+  email       String?
+  websiteUrl  String?
+  phone       String?
+  photoUrl    String?
+  logoUrl     String?
+  fontFamily  String?
+  buttonColor String?
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  socialLinks SocialLink[]
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+}
+
+model SocialLink {
+  id        String @id @default(cuid())
+  platform  String
+  url       String
+  sortOrder Int    @default(0)
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  role         Role   @default(CUSTOMER)
+
+  profiles Profile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}

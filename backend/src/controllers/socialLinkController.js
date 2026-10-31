@@ -10,6 +10,29 @@ export async function createSocialLink(req, res) {
       });
     }
 
+    // Find the profile
+    const profile = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: {
+        id: true,
+        userId: true,
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        message: "Profile not found",
+      });
+    }
+
+    // Check ownership or administrator access
+    if (req.user.role !== "ADMIN" && profile.userId !== req.user.id) {
+      return res.status(403).json({
+        message: "You cannot manage links for this profile",
+      });
+    }
+
+    // Create the social link
     const socialLink = await prisma.socialLink.create({
       data: {
         profileId,
@@ -59,20 +82,49 @@ export async function updateSocialLink(req, res) {
     const { id } = req.params;
     const { platform, url, sortOrder } = req.body;
 
+    // Find the social link and its profile
+    const socialLink = await prisma.socialLink.findUnique({
+      where: { id },
+      include: {
+        profile: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!socialLink) {
+      return res.status(404).json({
+        message: "Social link not found",
+      });
+    }
+
+    // Check ownership
+    if (
+      req.user.role !== "ADMIN" &&
+      socialLink.profile.userId !== req.user.id
+    ) {
+      return res.status(403).json({
+        message: "You cannot edit this social link",
+      });
+    }
+
+    // Only update permitted fields
     const updates = {};
 
     if (platform !== undefined) updates.platform = platform;
     if (url !== undefined) updates.url = url;
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
-    const socialLink = await prisma.socialLink.update({
+    const updatedLink = await prisma.socialLink.update({
       where: { id },
       data: updates,
     });
 
     return res.status(200).json({
       success: true,
-      socialLink,
+      socialLink: updatedLink,
     });
   } catch (error) {
     console.error(error);
@@ -86,6 +138,34 @@ export async function updateSocialLink(req, res) {
 export async function deleteSocialLink(req, res) {
   try {
     const { id } = req.params;
+
+    // Find the social link and its profile
+    const socialLink = await prisma.socialLink.findUnique({
+      where: { id },
+      include: {
+        profile: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!socialLink) {
+      return res.status(404).json({
+        message: "Social link not found",
+      });
+    }
+
+    // Check ownership
+    if (
+      req.user.role !== "ADMIN" &&
+      socialLink.profile.userId !== req.user.id
+    ) {
+      return res.status(403).json({
+        message: "You cannot delete this social link",
+      });
+    }
 
     await prisma.socialLink.delete({
       where: { id },

@@ -1,17 +1,28 @@
 import { Router } from "express";
+
 import {
   createProfile,
   updateProfile,
   getProfile,
+  assignProfile,
+  updateMyProfile,
 } from "../controllers/profileController.js";
 
-// 1. Create the router
+import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
+
 const router = Router();
 
-// 2. Register the routes
-router.post("/", createProfile);
-router.patch("/:publicId", updateProfile);
+// ADMIN ONLY
+router.post("/", authenticate, requireAdmin, createProfile);
+
+router.patch("/:publicId/assign", authenticate, requireAdmin, assignProfile);
+
+router.patch("/:publicId", authenticate, requireAdmin, updateProfile);
+
+// PUBLIC
 router.get("/:publicId", getProfile);
 
-// 3. Export the router
+//UPDATES
+router.patch("/:publicId/my-details", authenticate, updateMyProfile);
+
 export default router;

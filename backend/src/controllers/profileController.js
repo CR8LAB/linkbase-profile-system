@@ -56,19 +56,44 @@ export async function createProfile(req, res) {
 export async function updateProfile(req, res) {
   try {
     const { publicId } = req.params;
-    const { fullName, email, phone, jobTitle, websiteUrl } = req.body;
+
+    const allowedFields = [
+      "fullName",
+      "email",
+      "phone",
+      "jobTitle",
+      "websiteUrl",
+      "photoUrl",
+      "logoUrl",
+      "fontFamily",
+      "buttonColor",
+      "companyId",
+    ];
 
     const updates = {};
 
-    if (fullName !== undefined) updates.fullName = fullName;
-    if (email !== undefined) updates.email = email;
-    if (phone !== undefined) updates.phone = phone;
-    if (jobTitle !== undefined) updates.jobTitle = jobTitle;
-    if (websiteUrl !== undefined) updates.websiteUrl = websiteUrl;
+    for (const field of allowedFields) {
+      if (Object.hasOwn(req.body, field)) {
+        updates[field] = req.body[field];
+      }
+    }
 
     const profile = await prisma.profile.update({
       where: { publicId },
       data: updates,
+      select: {
+        publicId: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        jobTitle: true,
+        websiteUrl: true,
+        photoUrl: true,
+        logoUrl: true,
+        fontFamily: true,
+        buttonColor: true,
+        companyId: true,
+      },
     });
 
     return res.status(200).json({
@@ -92,6 +117,29 @@ export async function getProfile(req, res) {
 
     const profile = await prisma.profile.findUnique({
       where: { publicId },
+      select: {
+        publicId: true,
+        fullName: true,
+        jobTitle: true,
+        email: true,
+        phone: true,
+        websiteUrl: true,
+        photoUrl: true,
+        logoUrl: true,
+        fontFamily: true,
+        buttonColor: true,
+        socialLinks: {
+          select: {
+            id: true,
+            platform: true,
+            url: true,
+            sortOrder: true,
+          },
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
+      },
     });
 
     if (!profile) {
@@ -121,7 +169,15 @@ export async function getCompanyProfiles(req, res) {
 
     const profiles = await prisma.profile.findMany({
       where: {
-        companyId: companyId,
+        companyId,
+      },
+      select: {
+        publicId: true,
+        fullName: true,
+        jobTitle: true,
+        email: true,
+        phone: true,
+        photoUrl: true,
       },
     });
 
@@ -196,6 +252,41 @@ export async function assignProfile(req, res) {
 
 export async function updateMyProfile(req, res) {
   try {
+    const { fullName, jobTitle, email, phone, websiteUrl } = req.body;
+
+    if (
+      fullName !== undefined &&
+      (typeof fullName !== "string" || !fullName.trim())
+    ) {
+      return res.status(400).json({
+        message: "Full name must be a valid text value",
+      });
+    }
+
+    if (email !== undefined && typeof email !== "string") {
+      return res.status(400).json({
+        message: "Email must be a valid text value",
+      });
+    }
+
+    if (jobTitle !== undefined && typeof jobTitle !== "string") {
+      return res.status(400).json({
+        message: "Job title must be text",
+      });
+    }
+
+    if (phone !== undefined && typeof phone !== "string") {
+      return res.status(400).json({
+        message: "Phone number must be text",
+      });
+    }
+
+    if (websiteUrl !== undefined && typeof websiteUrl !== "string") {
+      return res.status(400).json({
+        message: "Website URL must be text",
+      });
+    }
+
     const { publicId } = req.params;
 
     // Find the profile
@@ -236,6 +327,14 @@ export async function updateMyProfile(req, res) {
     const updatedProfile = await prisma.profile.update({
       where: { publicId },
       data: updates,
+      select: {
+        publicId: true,
+        fullName: true,
+        jobTitle: true,
+        email: true,
+        phone: true,
+        websiteUrl: true,
+      },
     });
 
     return res.status(200).json({

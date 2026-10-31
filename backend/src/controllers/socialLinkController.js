@@ -4,9 +4,33 @@ export async function createSocialLink(req, res) {
   try {
     const { profileId, platform, url, sortOrder } = req.body;
 
-    if (!profileId || !platform || !url) {
+    if (
+      typeof profileId !== "string" ||
+      !profileId.trim() ||
+      typeof platform !== "string" ||
+      !platform.trim() ||
+      typeof url !== "string" ||
+      !url.trim()
+    ) {
       return res.status(400).json({
         message: "Profile ID, platform and URL are required",
+      });
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({
+        message: "Please provide a valid URL",
+      });
+    }
+
+    if (
+      sortOrder !== undefined &&
+      (!Number.isInteger(sortOrder) || sortOrder < 0)
+    ) {
+      return res.status(400).json({
+        message: "Sort order must be a non-negative integer",
       });
     }
 
@@ -82,6 +106,48 @@ export async function updateSocialLink(req, res) {
     const { id } = req.params;
     const { platform, url, sortOrder } = req.body;
 
+    if (
+      platform !== undefined &&
+      (typeof platform !== "string" || !platform.trim())
+    ) {
+      return res.status(400).json({
+        message: "Platform must be a non-empty text value",
+      });
+    }
+
+    if (url !== undefined) {
+      if (typeof url !== "string" || !url.trim()) {
+        return res.status(400).json({
+          message: "URL must be a non-empty text value",
+        });
+      }
+
+      let parsedUrl;
+
+      try {
+        parsedUrl = new URL(url);
+      } catch {
+        return res.status(400).json({
+          message: "Please provide a valid URL",
+        });
+      }
+
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        return res.status(400).json({
+          message: "Only HTTP and HTTPS URLs are allowed",
+        });
+      }
+    }
+
+    if (
+      sortOrder !== undefined &&
+      (!Number.isInteger(sortOrder) || sortOrder < 0)
+    ) {
+      return res.status(400).json({
+        message: "Sort order must be a non-negative integer",
+      });
+    }
+
     // Find the social link and its profile
     const socialLink = await prisma.socialLink.findUnique({
       where: { id },
@@ -138,6 +204,12 @@ export async function updateSocialLink(req, res) {
 export async function deleteSocialLink(req, res) {
   try {
     const { id } = req.params;
+
+    if (typeof id !== "string" || !id.trim()) {
+      return res.status(400).json({
+        message: "Social link ID is required",
+      });
+    }
 
     // Find the social link and its profile
     const socialLink = await prisma.socialLink.findUnique({

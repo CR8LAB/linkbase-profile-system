@@ -33,7 +33,14 @@ export async function createCompany(req, res) {
 
 export async function getCompanies(req, res) {
   try {
-    const companies = await prisma.company.findMany();
+    const companies = await prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        fontFamily: true,
+      },
+    });
 
     return res.status(200).json({
       success: true,

@@ -227,14 +227,23 @@ export async function assignProfile(req, res) {
       });
     }
 
+    if (profile.userId && profile.userId !== userId) {
+      return res.status(409).json({
+        message: "Profile is already assigned to another customer",
+      });
+    }
+
     const updatedProfile = await prisma.profile.update({
       where: { publicId },
       data: { userId },
       select: {
-        id: true,
         publicId: true,
         fullName: true,
-        userId: true,
+        user: {
+          select: {
+            email: true,
+          },
+        },
       },
     });
 

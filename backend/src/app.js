@@ -3,12 +3,19 @@ import companyRoutes from "./routes/companyRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import socialLinkRoutes from "./routes/socialLinkRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import cors from "cors";
 
 // 1. Create the Express application
 const app = express();
 
 // 2. Add JSON middleware
-
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use("/api/companies", companyRoutes);
 app.use("/api/profiles", profileRoutes);

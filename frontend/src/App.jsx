@@ -1,40 +1,20 @@
-import "./App.css";
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import CustomerDashboard from "./pages/CustomerDashboard";
 
 function App() {
   return (
-    <main className="login-page">
-      <div className="login-card">
-        <div className="brand">
-          <h1>LinkBase</h1>
-          <p>DIGITAL BUSINESS MANAGEMENT</p>
-        </div>
+    <Routes>
+      <Route path="/" element={<Login />} />
 
-        <div className="login-heading">
-          <h2>Welcome back</h2>
-          <p>Sign in to manage your profiles.</p>
-        </div>
+      <Route path="/admin" element={<AdminDashboard />} />
 
-        <form>
-          <div className="form-group">
-            <label htmlFor="email">Email address</label>
-            <input type="email" id="email" placeholder="Enter your email" />
-          </div>
+      <Route path="/dashboard" element={<CustomerDashboard />} />
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              placeholder="Enter your password"
-            />
-          </div>
-
-          <button type="submit">Sign in</button>
-        </form>
-
-        <p className="login-footer">Secure administrator access</p>
-      </div>
-    </main>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Profiles() {
   const [companies, setCompanies] = useState([]);
@@ -8,6 +9,7 @@ function Profiles() {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   // Load companies when the page opens
   useEffect(() => {
@@ -93,6 +95,12 @@ function Profiles() {
       <section className="dashboard-welcome">
         <h1>Manage Profiles</h1>
         <p>Manage digital business cards across your companies.</p>
+        <button
+          className="profile-edit-button"
+          onClick={() => navigate("/admin/profiles/create")}
+        >
+          + Create Profile
+        </button>
       </section>
 
       <div className="company-selector">

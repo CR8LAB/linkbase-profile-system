@@ -5,6 +5,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import Profiles from "./pages/profiles.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
+import CreateProfile from "./pages/CreateProfile.jsx";
+import PublicProfile from "./pages/PublicProfile.jsx";
 
 function App() {
   return (
@@ -20,6 +22,10 @@ function App() {
       <Route path="/admin/profiles" element={<Profiles />} />
 
       <Route path="/admin/profiles/:publicId/edit" element={<EditProfile />} />
+
+      <Route path="/admin/profiles/create" element={<CreateProfile />} />
+
+      <Route path="/profile/:publicId" element={<PublicProfile />} />
     </Routes>
   );
 }

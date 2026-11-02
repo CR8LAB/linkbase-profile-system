@@ -178,6 +178,13 @@ export async function getCompanyProfiles(req, res) {
         email: true,
         phone: true,
         photoUrl: true,
+
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
       },
     });
 

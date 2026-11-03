@@ -66,6 +66,45 @@
   font-size: 14px;
 }
 
+.password-field-control {
+  position: relative;
+}
+
+.password-field-control input {
+  width: 100%;
+  padding-right: 68px;
+}
+
+.login-card .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: auto;
+  padding: 6px;
+  transform: translateY(-50%);
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  font-size: 12px;
+}
+
+.auth-form-link {
+  margin: -8px 0 18px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.auth-form-link a,
+.auth-secondary-link a {
+  color: #245c72;
+}
+
+.auth-secondary-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+}
+
 .login-card button {
   width: 100%;
   padding: 14px;
@@ -262,6 +301,33 @@
   color: #101d3b;
   font-size: 17px;
   margin-bottom: 20px;
+}
+
+.profile-invite-form {
+  margin-top: 18px;
+}
+
+.profile-invite-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.profile-invite-form input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #dce1e9;
+  border-radius: 7px;
+  font: inherit;
+}
+
+.invite-feedback {
+  margin-top: 10px;
+  color: #245c72;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .profiles-grid {

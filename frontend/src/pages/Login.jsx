@@ -1,7 +1,12 @@
 import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
+import PasswordField from "./PasswordField.jsx";
 import "../App.css";
 
 function Login() {
+  const location = useLocation();
+  const notice = location.state?.message || "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,7 +18,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,6 +60,7 @@ function Login() {
         </div>
 
         <form onSubmit={handleLogin}>
+          {notice && <p className="success-message">{notice}</p>}
           <div className="form-group">
             <label>Email Address</label>
             <input
@@ -66,16 +72,17 @@ function Login() {
             />
           </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <PasswordField
+            id="login-password"
+            label="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+          />
+
+          <p className="auth-form-link">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
 
           {error && <p className="error-message">{error}</p>}
 

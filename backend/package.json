@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test tests/authSecurity.test.js && node --test tests/authController.test.js"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +20,10 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
+    "nodemailer": "^10.3.1",
     "pg": "^8.23.1",
     "react-icons": "^5.7.0"
   },

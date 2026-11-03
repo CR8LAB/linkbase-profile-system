@@ -9,11 +9,17 @@ import CreateProfile from "./pages/CreateProfile.jsx";
 import PublicProfile from "./pages/PublicProfile.jsx";
 import EditMyProfile from "./pages/EditMyProfile";
 import ManageSocialLinks from "./pages/ManageSocialLinks";
+import ClaimProfile from "./pages/ClaimProfile.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/claim" element={<ClaimProfile />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/admin" element={<AdminDashboard />} />
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
 
 function Profiles() {
   const [companies, setCompanies] = useState([]);
@@ -9,6 +10,9 @@ function Profiles() {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [error, setError] = useState("");
+  const [inviteEmails, setInviteEmails] = useState({});
+  const [invitingProfileId, setInvitingProfileId] = useState("");
+  const [inviteFeedback, setInviteFeedback] = useState({});
   const navigate = useNavigate();
 
   // Load companies when the page opens
@@ -17,7 +21,7 @@ function Profiles() {
       try {
         const token = sessionStorage.getItem("token");
 
-        const response = await fetch("http://localhost:5000/api/companies", {
+        const response = await fetch(`${API_BASE_URL}/api/companies`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -47,7 +51,6 @@ function Profiles() {
   // Load profiles whenever the selected company changes
   useEffect(() => {
     if (!selectedCompany) {
-      setProfiles([]);
       return;
     }
 
@@ -59,7 +62,7 @@ function Profiles() {
         const token = sessionStorage.getItem("token");
 
         const response = await fetch(
-          `http://localhost:5000/api/companies/${selectedCompany}/profiles`,
+          `${API_BASE_URL}/api/companies/${selectedCompany}/profiles`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -84,6 +87,43 @@ function Profiles() {
 
     fetchProfiles();
   }, [selectedCompany]);
+
+  async function sendClaimInvitation(event, profile) {
+    event.preventDefault();
+    setInvitingProfileId(profile.publicId);
+    setInviteFeedback((previous) => ({ ...previous, [profile.publicId]: "" }));
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/auth/profiles/${encodeURIComponent(profile.publicId)}/claim-invitations`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ email: inviteEmails[profile.publicId] || "" }),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok)
+        throw new Error(data.message || "Could not send invitation");
+
+      setInviteFeedback((previous) => ({
+        ...previous,
+        [profile.publicId]: "Invitation sent.",
+      }));
+    } catch (inviteError) {
+      setInviteFeedback((previous) => ({
+        ...previous,
+        [profile.publicId]: inviteError.message,
+      }));
+    } finally {
+      setInvitingProfileId("");
+    }
+  }
 
   return (
     <div className="admin-content">
@@ -172,6 +212,44 @@ function Profiles() {
 
                 {profile.user && (
                   <p className="assigned-email">{profile.user.email}</p>
+                )}
+
+                {!profile.user && (
+                  <form
+                    className="profile-invite-form"
+                    onSubmit={(event) => sendClaimInvitation(event, profile)}
+                  >
+                    <label htmlFor={`invite-${profile.publicId}`}>
+                      Customer email
+                    </label>
+                    <input
+                      id={`invite-${profile.publicId}`}
+                      type="email"
+                      autoComplete="email"
+                      value={inviteEmails[profile.publicId] || ""}
+                      onChange={(event) =>
+                        setInviteEmails((previous) => ({
+                          ...previous,
+                          [profile.publicId]: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="profile-edit-button"
+                      disabled={invitingProfileId === profile.publicId}
+                    >
+                      {invitingProfileId === profile.publicId
+                        ? "Sending..."
+                        : "Send claim invitation"}
+                    </button>
+                    {inviteFeedback[profile.publicId] && (
+                      <p className="invite-feedback" role="status">
+                        {inviteFeedback[profile.publicId]}
+                      </p>
+                    )}
+                  </form>
                 )}
 
                 <button

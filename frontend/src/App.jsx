@@ -7,6 +7,7 @@ import Profiles from "./pages/profiles.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import CreateProfile from "./pages/CreateProfile.jsx";
 import PublicProfile from "./pages/PublicProfile.jsx";
+import EditMyProfile from "./pages/EditMyProfile";
 
 function App() {
   return (
@@ -26,6 +27,8 @@ function App() {
       <Route path="/admin/profiles/create" element={<CreateProfile />} />
 
       <Route path="/profile/:publicId" element={<PublicProfile />} />
+
+      <Route path="/dashboard/edit" element={<EditMyProfile />} />
     </Routes>
   );
 }

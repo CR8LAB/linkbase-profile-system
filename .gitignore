@@ -5,3 +5,5 @@ node_modules/
 dist/
 src/generated/
 backend/src/generated/
+credentials/
+.env

@@ -1,4 +1,6 @@
 import prisma from "../config/prisma.js";
+import { bucket } from "../config/storage.js";
+import { randomUUID } from "node:crypto";
 
 export async function createProfile(req, res) {
   try {
@@ -163,6 +165,44 @@ export async function getProfile(req, res) {
 
 ////////////////////////////////////////
 
+export async function getMyProfile(req, res) {
+  try {
+    const profile = await prisma.profile.findFirst({
+      where: {
+        userId: req.user.id,
+      },
+      select: {
+        publicId: true,
+        fullName: true,
+        jobTitle: true,
+        email: true,
+        phone: true,
+        websiteUrl: true,
+        photoUrl: true,
+        logoUrl: true,
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        message: "No profile has been assigned to your account",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      profile,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve your profile",
+    });
+  }
+}
+
+///////////////
 export async function getCompanyProfiles(req, res) {
   try {
     const { companyId } = req.params;
@@ -362,6 +402,79 @@ export async function updateMyProfile(req, res) {
 
     return res.status(500).json({
       message: "Failed to update profile",
+    });
+  }
+}
+
+export async function uploadMyPhoto(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Please select an image",
+      });
+    }
+
+    const { publicId } = req.params;
+
+    // Find the profile
+    const profile = await prisma.profile.findUnique({
+      where: { publicId },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        message: "Profile not found",
+      });
+    }
+
+    // Verify ownership
+    if (profile.userId !== req.user.id) {
+      return res.status(403).json({
+        message: "You cannot upload a photo to this profile",
+      });
+    }
+
+    const extensions = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    };
+
+    const extension = extensions[req.file.mimetype];
+    const fileName = `profiles/${publicId}/${randomUUID()}.${extension}`;
+
+    const file = bucket.file(fileName);
+
+    await file.save(req.file.buffer, {
+      resumable: false,
+      metadata: {
+        contentType: req.file.mimetype,
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+
+    const photoUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    const updatedProfile = await prisma.profile.update({
+      where: { publicId },
+      data: { photoUrl },
+      select: {
+        publicId: true,
+        fullName: true,
+        photoUrl: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile photo uploaded successfully",
+      profile: updatedProfile,
+    });
+  } catch (error) {
+    console.error("Photo upload error:", error);
+
+    return res.status(500).json({
+      message: "Failed to upload profile photo",
     });
   }
 }

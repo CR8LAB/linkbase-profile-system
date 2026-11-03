@@ -172,6 +172,7 @@ export async function getMyProfile(req, res) {
         userId: req.user.id,
       },
       select: {
+        id: true,
         publicId: true,
         fullName: true,
         jobTitle: true,

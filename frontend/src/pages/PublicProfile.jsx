@@ -1,6 +1,26 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import {
+  FaFacebookF,
+  FaInstagram,
+  FaLinkedinIn,
+  FaTiktok,
+  FaYoutube,
+  FaWhatsapp,
+  FaTwitter,
+} from "react-icons/fa";
+
+const socialIcons = {
+  facebook: FaFacebookF,
+  instagram: FaInstagram,
+  linkedin: FaLinkedinIn,
+  tiktok: FaTiktok,
+  youtube: FaYoutube,
+  whatsapp: FaWhatsapp,
+  x: FaTwitter,
+  twitter: FaTwitter,
+};
 
 function PublicProfile() {
   const { publicId } = useParams();
@@ -133,6 +153,28 @@ function PublicProfile() {
         >
           Save Contact
         </button>
+
+        {profile.socialLinks?.length > 0 && (
+          <div className="public-social-links">
+            {profile.socialLinks.map((social) => {
+              const Icon = socialIcons[social.platform.toLowerCase()];
+
+              return (
+                <a
+                  key={social.id}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`public-social-link ${social.platform.toLowerCase()}`}
+                  aria-label={social.platform}
+                  title={social.platform}
+                >
+                  {Icon ? <Icon /> : social.platform.charAt(0).toUpperCase()}
+                </a>
+              );
+            })}
+          </div>
+        )}
 
         <p className="public-profile-id">{profile.publicId}</p>
       </div>

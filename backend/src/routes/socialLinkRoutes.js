@@ -5,6 +5,7 @@ import {
   getSocialLinks,
   updateSocialLink,
   deleteSocialLink,
+  reorderSocialLinks,
 } from "../controllers/socialLinkController.js";
 
 import { authenticate } from "../middleware/authMiddleware.js";
@@ -22,5 +23,7 @@ router.patch("/:id", authenticate, updateSocialLink);
 
 // DELETE - Admin or profile owner
 router.delete("/:id", authenticate, deleteSocialLink);
+
+router.patch("/reorder", authenticate, reorderSocialLinks);
 
 export default router;

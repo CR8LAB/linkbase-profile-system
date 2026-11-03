@@ -24,17 +24,21 @@ model Company {
 }
 
 model Profile {
-  id          String  @id @default(cuid())
-  publicId    String  @unique
-  fullName    String
-  jobTitle    String?
-  email       String?
-  websiteUrl  String?
-  phone       String?
-  photoUrl    String?
-  logoUrl     String?
-  fontFamily  String?
-  buttonColor String?
+  id              String  @id @default(cuid())
+  publicId        String  @unique
+  fullName        String
+  jobTitle        String?
+  email           String?
+  websiteUrl      String?
+  phone           String?
+  photoUrl        String?
+  logoUrl         String?
+  fontFamily      String?
+  buttonColor     String?
+  backgroundColor String  @default("#ffffff")
+  buttonTextColor String  @default("#ffffff")
+  pdfUrl          String?
+  visitCount      Int     @default(0)
 
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
@@ -45,6 +49,10 @@ model Profile {
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
+
+  claimTokens ProfileClaimToken[]
+
+  @@unique([userId])
 }
 
 model SocialLink {
@@ -65,8 +73,34 @@ model User {
 
   profiles Profile[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  passwordResetTokens PasswordResetToken[]
+}
+
+model ProfileClaimToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  email     String
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([profileId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 enum Role {

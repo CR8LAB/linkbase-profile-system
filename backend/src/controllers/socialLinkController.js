@@ -255,3 +255,74 @@ export async function deleteSocialLink(req, res) {
     });
   }
 }
+
+export async function reorderSocialLinks(req, res) {
+  try {
+    const { profileId, orderedIds } = req.body;
+
+    if (
+      typeof profileId !== "string" ||
+      !Array.isArray(orderedIds) ||
+      orderedIds.length === 0 ||
+      !orderedIds.every((id) => typeof id === "string")
+    ) {
+      return res.status(400).json({
+        message: "Profile ID and ordered link IDs are required",
+      });
+    }
+
+    const profile = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { id: true, userId: true },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        message: "Profile not found",
+      });
+    }
+
+    if (req.user.role !== "ADMIN" && profile.userId !== req.user.id) {
+      return res.status(403).json({
+        message: "You cannot reorder links for this profile",
+      });
+    }
+
+    const links = await prisma.socialLink.findMany({
+      where: { profileId },
+      select: { id: true },
+    });
+
+    const existingIds = links.map((link) => link.id);
+
+    if (
+      orderedIds.length !== existingIds.length ||
+      new Set(orderedIds).size !== existingIds.length ||
+      !orderedIds.every((id) => existingIds.includes(id))
+    ) {
+      return res.status(400).json({
+        message: "The ordered IDs must contain every profile link exactly once",
+      });
+    }
+
+    await prisma.$transaction(
+      orderedIds.map((id, index) =>
+        prisma.socialLink.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Social links reordered successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Failed to reorder social links",
+    });
+  }
+}

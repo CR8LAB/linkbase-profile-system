@@ -77,6 +77,10 @@ function CustomerDashboard() {
             <span>✎</span> Edit My Profile
           </button>
 
+          <button onClick={() => navigate("/dashboard/social-links")}>
+            <span>◎</span> Social Media Links
+          </button>
+
           <a
             href={`/profile/${profile.publicId}`}
             target="_blank"

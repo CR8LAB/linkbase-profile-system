@@ -1083,3 +1083,217 @@
   border-color: #101d3b;
   box-shadow: 0 0 0 3px rgba(16, 29, 59, 0.08);
 }
+
+/* CUSTOMER PROFILE PHOTO UPLOAD */
+
+.customer-photo-upload {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0;
+  margin-bottom: 20px;
+}
+
+.customer-photo-preview {
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e8edf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #101d3b;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.customer-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-photo-controls h3 {
+  font-size: 15px;
+  margin: 0 0 6px;
+  color: #101d3b;
+}
+
+.customer-photo-controls p {
+  font-size: 11px;
+  color: #8490a2;
+  margin-bottom: 12px;
+}
+
+.customer-photo-button {
+  display: inline-block;
+  padding: 10px 18px;
+  background: #101d3b;
+  color: white;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.customer-photo-button:hover {
+  background: #243657;
+}
+
+.customer-photo-button.uploading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.customer-edit-card hr {
+  border: 0;
+  border-top: 1px solid #edf0f5;
+  margin: 10px 0 25px;
+}
+
+.social-manager-card select {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #dce2eb;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  background: white;
+}
+
+.social-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.social-link-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border: 1px solid #e9edf3;
+  border-radius: 9px;
+}
+
+.social-link-item strong,
+.social-link-item a {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.social-link-item a {
+  margin-top: 5px;
+  color: #718096;
+}
+
+.social-link-item button {
+  border: none;
+  background: #fff0f0;
+  color: #c03939;
+  border-radius: 6px;
+  padding: 9px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.social-back-button {
+  margin-top: 25px;
+  background: transparent;
+  border: 1px solid #dce2eb;
+  padding: 12px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.public-social-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.public-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid #dce2ed;
+  border-radius: 8px;
+  color: #14213f;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.public-social-link:hover {
+  background: #14213f;
+  color: white;
+  border-color: #14213f;
+}
+
+.public-social-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.public-social-link {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f1f3f7;
+  color: #14213f;
+  font-size: 21px;
+  text-decoration: none;
+  transition: all 0.25s ease;
+}
+
+.public-social-link:hover {
+  transform: translateY(-4px);
+  color: white;
+  background: #14213f;
+}
+
+.public-social-link.facebook:hover {
+  background: #1877f2;
+}
+
+.public-social-link.instagram:hover {
+  background: #e1306c;
+}
+
+.public-social-link.linkedin:hover {
+  background: #0a66c2;
+}
+
+.public-social-link.whatsapp:hover {
+  background: #25d366;
+}
+
+.public-social-link.tiktok:hover {
+  background: #000000;
+}
+
+.public-social-link.youtube:hover {
+  background: #ff0000;
+}
+
+.public-social-link.x:hover {
+  background: #000000;
+}

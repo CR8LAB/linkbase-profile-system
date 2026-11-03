@@ -7,11 +7,17 @@ import cors from "cors";
 
 // 1. Create the Express application
 const app = express();
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // 2. Add JSON middleware
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, callback) => {
+      callback(null, !origin || allowedOrigins.includes(origin));
+    },
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),

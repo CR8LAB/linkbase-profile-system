@@ -8,6 +8,7 @@ import EditProfile from "./pages/EditProfile.jsx";
 import CreateProfile from "./pages/CreateProfile.jsx";
 import PublicProfile from "./pages/PublicProfile.jsx";
 import EditMyProfile from "./pages/EditMyProfile";
+import ManageSocialLinks from "./pages/ManageSocialLinks";
 
 function App() {
   return (
@@ -29,6 +30,8 @@ function App() {
       <Route path="/profile/:publicId" element={<PublicProfile />} />
 
       <Route path="/dashboard/edit" element={<EditMyProfile />} />
+
+      <Route path="/dashboard/social-links" element={<ManageSocialLinks />} />
     </Routes>
   );
 }

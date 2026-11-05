@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
 
 function CreateProfile() {
   const navigate = useNavigate();
@@ -18,10 +19,10 @@ function CreateProfile() {
     email: "",
     phone: "",
     websiteUrl: "",
-    photoUrl: "",
-    logoUrl: "",
     fontFamily: "Raleway",
     buttonColor: "#101d3b",
+    backgroundColor: "#ffffff",
+    buttonTextColor: "#ffffff",
   });
 
   // Fetch companies
@@ -30,7 +31,7 @@ function CreateProfile() {
       try {
         const token = sessionStorage.getItem("token");
 
-        const response = await fetch("http://localhost:5000/api/companies", {
+        const response = await fetch(`${API_BASE_URL}/api/companies`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -74,7 +75,7 @@ function CreateProfile() {
     try {
       const token = sessionStorage.getItem("token");
 
-      const response = await fetch("http://localhost:5000/api/profiles", {
+      const response = await fetch(`${API_BASE_URL}/api/profiles`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +93,9 @@ function CreateProfile() {
       setSuccess("Profile created successfully!");
 
       setTimeout(() => {
-        navigate("/admin/profiles");
+        navigate(
+          `/admin/profiles/${encodeURIComponent(data.profile.publicId)}/edit`,
+        );
       }, 1200);
     } catch (error) {
       setError(error.message);
@@ -201,27 +204,6 @@ function CreateProfile() {
         </div>
 
         <h3>Profile Branding</h3>
-
-        <div className="edit-form-group">
-          <label>Profile Photo URL</label>
-          <input
-            name="photoUrl"
-            value={formData.photoUrl}
-            onChange={handleChange}
-            placeholder="Photo URL"
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Company Logo URL</label>
-          <input
-            name="logoUrl"
-            value={formData.logoUrl}
-            onChange={handleChange}
-            placeholder="Logo URL"
-          />
-        </div>
-
         <div className="edit-form-group">
           <label>Font Family</label>
           <select
@@ -237,11 +219,31 @@ function CreateProfile() {
         </div>
 
         <div className="edit-form-group">
-          <label>Button Color</label>
+          <label>Profile Background Color</label>
+          <input
+            type="color"
+            name="backgroundColor"
+            value={formData.backgroundColor}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="edit-form-group">
+          <label>Button Background Color</label>
           <input
             type="color"
             name="buttonColor"
             value={formData.buttonColor}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="edit-form-group">
+          <label>Button Text Color</label>
+          <input
+            type="color"
+            name="buttonTextColor"
+            value={formData.buttonTextColor}
             onChange={handleChange}
           />
         </div>

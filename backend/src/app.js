@@ -3,6 +3,7 @@ import companyRoutes from "./routes/companyRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import socialLinkRoutes from "./routes/socialLinkRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import cors from "cors";
 
 // 1. Create the Express application
@@ -27,6 +28,7 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/social-links", socialLinkRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 3. Export the application
 app.get("/api/health", (req, res) => {

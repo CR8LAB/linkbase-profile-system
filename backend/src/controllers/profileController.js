@@ -1,6 +1,10 @@
 import prisma from "../config/prisma.js";
 import { bucket } from "../config/storage.js";
 import { randomUUID } from "node:crypto";
+import {
+  canCustomizeProfile,
+  validateProfileCustomization,
+} from "../services/profileValidation.js";
 
 export async function createProfile(req, res) {
   try {
@@ -16,27 +20,46 @@ export async function createProfile(req, res) {
       logoUrl,
       fontFamily,
       buttonColor,
+      backgroundColor,
+      buttonTextColor,
     } = req.body;
 
-    if (!publicId || !fullName || !companyId) {
+    if (
+      typeof publicId !== "string" ||
+      !publicId.trim() ||
+      typeof fullName !== "string" ||
+      !fullName.trim() ||
+      typeof companyId !== "string" ||
+      !companyId.trim()
+    ) {
       return res.status(400).json({
         message: "Public ID, full name and company ID are required",
       });
     }
 
+    const validation = validateProfileCustomization({
+      fullName,
+      jobTitle,
+      email,
+      phone,
+      websiteUrl,
+      fontFamily,
+      buttonColor,
+      backgroundColor,
+      buttonTextColor,
+    });
+
+    if (validation.error) {
+      return res.status(400).json({ message: validation.error });
+    }
+
     const profile = await prisma.profile.create({
       data: {
-        publicId,
-        fullName,
-        companyId,
-        jobTitle,
-        email,
-        phone,
-        websiteUrl,
+        publicId: publicId.trim(),
+        companyId: companyId.trim(),
+        ...validation.updates,
         photoUrl,
         logoUrl,
-        fontFamily,
-        buttonColor,
       },
     });
 
@@ -58,26 +81,39 @@ export async function createProfile(req, res) {
 export async function updateProfile(req, res) {
   try {
     const { publicId } = req.params;
+    const body = req.body || {};
+    const existing = await prisma.profile.findUnique({
+      where: { publicId },
+      select: { userId: true },
+    });
 
-    const allowedFields = [
-      "fullName",
-      "email",
-      "phone",
-      "jobTitle",
-      "websiteUrl",
-      "photoUrl",
-      "logoUrl",
-      "fontFamily",
-      "buttonColor",
-      "companyId",
-    ];
+    if (!existing) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
 
-    const updates = {};
+    if (!canCustomizeProfile(req.user, existing)) {
+      return res.status(403).json({ message: "You cannot edit this profile" });
+    }
 
-    for (const field of allowedFields) {
-      if (Object.hasOwn(req.body, field)) {
-        updates[field] = req.body[field];
+    const validation = validateProfileCustomization(body);
+    if (validation.error) {
+      return res.status(400).json({ message: validation.error });
+    }
+
+    const updates = { ...validation.updates };
+
+    if (Object.hasOwn(body, "companyId")) {
+      if (req.user.role !== "ADMIN") {
+        return res
+          .status(403)
+          .json({ message: "Only administrators can change the company" });
       }
+      if (typeof body.companyId !== "string" || !body.companyId.trim()) {
+        return res
+          .status(400)
+          .json({ message: "A valid company ID is required" });
+      }
+      updates.companyId = body.companyId.trim();
     }
 
     const profile = await prisma.profile.update({
@@ -94,6 +130,8 @@ export async function updateProfile(req, res) {
         logoUrl: true,
         fontFamily: true,
         buttonColor: true,
+        backgroundColor: true,
+        buttonTextColor: true,
         companyId: true,
       },
     });
@@ -130,6 +168,8 @@ export async function getProfile(req, res) {
         logoUrl: true,
         fontFamily: true,
         buttonColor: true,
+        backgroundColor: true,
+        buttonTextColor: true,
         socialLinks: {
           select: {
             id: true,
@@ -181,6 +221,19 @@ export async function getMyProfile(req, res) {
         websiteUrl: true,
         photoUrl: true,
         logoUrl: true,
+        fontFamily: true,
+        buttonColor: true,
+        backgroundColor: true,
+        buttonTextColor: true,
+        socialLinks: {
+          select: {
+            id: true,
+            platform: true,
+            url: true,
+            sortOrder: true,
+          },
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 
@@ -281,6 +334,20 @@ export async function assignProfile(req, res) {
       });
     }
 
+    const alreadyAssignedProfile = await prisma.profile.findFirst({
+      where: { userId },
+      select: { publicId: true },
+    });
+
+    if (
+      alreadyAssignedProfile &&
+      alreadyAssignedProfile.publicId !== publicId
+    ) {
+      return res.status(409).json({
+        message: "Customer is already assigned to another profile",
+      });
+    }
+
     const updatedProfile = await prisma.profile.update({
       where: { publicId },
       data: { userId },
@@ -299,6 +366,12 @@ export async function assignProfile(req, res) {
   } catch (error) {
     console.error(error);
 
+    if (error.code === "P2002") {
+      return res.status(409).json({
+        message: "Customer is already assigned to another profile",
+      });
+    }
+
     return res.status(500).json({
       message: "Failed to assign profile",
     });
@@ -308,106 +381,10 @@ export async function assignProfile(req, res) {
 ///////////////////
 
 export async function updateMyProfile(req, res) {
-  try {
-    const { fullName, jobTitle, email, phone, websiteUrl } = req.body;
-
-    if (
-      fullName !== undefined &&
-      (typeof fullName !== "string" || !fullName.trim())
-    ) {
-      return res.status(400).json({
-        message: "Full name must be a valid text value",
-      });
-    }
-
-    if (email !== undefined && typeof email !== "string") {
-      return res.status(400).json({
-        message: "Email must be a valid text value",
-      });
-    }
-
-    if (jobTitle !== undefined && typeof jobTitle !== "string") {
-      return res.status(400).json({
-        message: "Job title must be text",
-      });
-    }
-
-    if (phone !== undefined && typeof phone !== "string") {
-      return res.status(400).json({
-        message: "Phone number must be text",
-      });
-    }
-
-    if (websiteUrl !== undefined && typeof websiteUrl !== "string") {
-      return res.status(400).json({
-        message: "Website URL must be text",
-      });
-    }
-
-    const { publicId } = req.params;
-
-    // Find the profile
-    const profile = await prisma.profile.findUnique({
-      where: { publicId },
-    });
-
-    if (!profile) {
-      return res.status(404).json({
-        message: "Profile not found",
-      });
-    }
-
-    // Check ownership
-    if (profile.userId !== req.user.id) {
-      return res.status(403).json({
-        message: "You cannot edit this profile",
-      });
-    }
-
-    // Only allow these fields to be updated
-    const allowedFields = [
-      "fullName",
-      "jobTitle",
-      "email",
-      "phone",
-      "websiteUrl",
-    ];
-
-    const updates = {};
-
-    for (const field of allowedFields) {
-      if (Object.hasOwn(req.body, field)) {
-        updates[field] = req.body[field];
-      }
-    }
-
-    const updatedProfile = await prisma.profile.update({
-      where: { publicId },
-      data: updates,
-      select: {
-        publicId: true,
-        fullName: true,
-        jobTitle: true,
-        email: true,
-        phone: true,
-        websiteUrl: true,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      profile: updatedProfile,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      message: "Failed to update profile",
-    });
-  }
+  return updateProfile(req, res);
 }
 
-export async function uploadMyPhoto(req, res) {
+async function uploadProfileImage(req, res, imageField) {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -429,9 +406,9 @@ export async function uploadMyPhoto(req, res) {
     }
 
     // Verify ownership
-    if (profile.userId !== req.user.id) {
+    if (!canCustomizeProfile(req.user, profile)) {
       return res.status(403).json({
-        message: "You cannot upload a photo to this profile",
+        message: "You cannot upload an image to this profile",
       });
     }
 
@@ -442,7 +419,10 @@ export async function uploadMyPhoto(req, res) {
     };
 
     const extension = extensions[req.file.mimetype];
-    const fileName = `profiles/${publicId}/${randomUUID()}.${extension}`;
+    const fileName =
+      imageField === "photoUrl"
+        ? `profiles/${publicId}/${randomUUID()}.${extension}`
+        : `profiles/${publicId}/logos/${randomUUID()}.${extension}`;
 
     const file = bucket.file(fileName);
 
@@ -458,24 +438,32 @@ export async function uploadMyPhoto(req, res) {
 
     const updatedProfile = await prisma.profile.update({
       where: { publicId },
-      data: { photoUrl },
+      data: { [imageField]: photoUrl },
       select: {
         publicId: true,
         fullName: true,
-        photoUrl: true,
+        [imageField]: true,
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Profile photo uploaded successfully",
+      message: "Profile image uploaded successfully",
       profile: updatedProfile,
     });
   } catch (error) {
-    console.error("Photo upload error:", error);
+    console.error("Profile image upload error:", error);
 
     return res.status(500).json({
-      message: "Failed to upload profile photo",
+      message: "Failed to upload profile image",
     });
   }
+}
+
+export async function uploadMyPhoto(req, res) {
+  return uploadProfileImage(req, res, "photoUrl");
+}
+
+export async function uploadProfileLogo(req, res) {
+  return uploadProfileImage(req, res, "logoUrl");
 }

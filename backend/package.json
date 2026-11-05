@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --test tests/authSecurity.test.js && node --test tests/authController.test.js"
+    "test": "node --test tests/authSecurity.test.js && node --test tests/authController.test.js && node --test tests/profileValidation.test.js",
+    "migrate:mvp:status": "node scripts/prismaMvp.js migrate status",
+    "migrate:mvp:deploy": "node scripts/prismaMvp.js migrate deploy"
   },
   "keywords": [],
   "author": "",

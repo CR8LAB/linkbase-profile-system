@@ -1,26 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
+import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
 
 function EditProfile() {
   const { publicId } = useParams();
   const navigate = useNavigate();
-
-  const [profile, setProfile] = useState({
-    fullName: "",
-    jobTitle: "",
-    email: "",
-    phone: "",
-    websiteUrl: "",
-    photoUrl: "",
-    logoUrl: "",
-    fontFamily: "Raleway",
-    buttonColor: "#101d3b",
-  });
-
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [imageSuccess, setImageSuccess] = useState("");
 
   // Load existing profile
   useEffect(() => {
@@ -29,7 +22,7 @@ function EditProfile() {
         const token = sessionStorage.getItem("token");
 
         const response = await fetch(
-          `http://localhost:5000/api/profiles/${publicId}`,
+          `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -43,10 +36,7 @@ function EditProfile() {
           throw new Error(data.message || "Failed to load profile");
         }
 
-        setProfile((previous) => ({
-          ...previous,
-          ...data.profile,
-        }));
+        setProfile(data.profile);
       } catch (error) {
         setError(error.message);
       } finally {
@@ -57,14 +47,60 @@ function EditProfile() {
     fetchProfile();
   }, [publicId]);
 
-  // Update form fields
-  function handleChange(e) {
-    const { name, value } = e.target;
+  function handleChange(event) {
+    const { name, value } = event.target;
 
     setProfile((previous) => ({
       ...previous,
       [name]: value,
     }));
+  }
+
+  async function handleImageSelect(event, imageType) {
+    const file = event.target.files?.[0];
+    if (!file || !profile) return;
+
+    setImageError("");
+    setImageSuccess("");
+    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
+      setImageError("Please select a JPG, PNG or WebP image.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Image must be smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append(imageType === "photo" ? "photo" : "logo", file);
+
+    try {
+      setUploadingImage(
+        imageType === "photo" ? "profile image" : "company logo",
+      );
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}/${imageType}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Image upload failed");
+
+      const field = imageType === "photo" ? "photoUrl" : "logoUrl";
+      setProfile((previous) => ({ ...previous, [field]: data.profile[field] }));
+      setImageSuccess("Image uploaded successfully.");
+    } catch (uploadError) {
+      setImageError(uploadError.message);
+    } finally {
+      setUploadingImage("");
+      event.target.value = "";
+    }
   }
 
   // Save profile
@@ -79,7 +115,7 @@ function EditProfile() {
       const token = sessionStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:5000/api/profiles/${publicId}`,
+        `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`,
         {
           method: "PATCH",
           headers: {
@@ -96,6 +132,7 @@ function EditProfile() {
         throw new Error(data.message || "Failed to update profile");
       }
 
+      setProfile((previous) => ({ ...previous, ...data.profile }));
       setSuccess("Profile updated successfully.");
     } catch (error) {
       setError(error.message);
@@ -106,6 +143,10 @@ function EditProfile() {
 
   if (loading) {
     return <div className="admin-content">Loading profile...</div>;
+  }
+
+  if (!profile) {
+    return <div className="admin-content">{error || "Profile not found."}</div>;
   }
 
   return (
@@ -120,95 +161,18 @@ function EditProfile() {
         <p>Update this digital business card.</p>
       </section>
 
-      <form className="edit-profile-form" onSubmit={handleSubmit}>
-        <h3>Personal Information</h3>
-
-        <div className="edit-form-group">
-          <label>Full Name</label>
-          <input
-            name="fullName"
-            value={profile.fullName}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Job Title</label>
-          <input
-            name="jobTitle"
-            value={profile.jobTitle}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Email Address</label>
-          <input
-            type="email"
-            name="email"
-            value={profile.email}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Phone Number</label>
-          <input name="phone" value={profile.phone} onChange={handleChange} />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Website</label>
-          <input
-            name="websiteUrl"
-            value={profile.websiteUrl}
-            onChange={handleChange}
-          />
-        </div>
-
-        <h3>Branding</h3>
-
-        <div className="edit-form-group">
-          <label>Profile Photo URL</label>
-          <input
-            name="photoUrl"
-            value={profile.photoUrl}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Company Logo URL</label>
-          <input
-            name="logoUrl"
-            value={profile.logoUrl}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="edit-form-group">
-          <label>Font Family</label>
-          <select
-            name="fontFamily"
-            value={profile.fontFamily}
-            onChange={handleChange}
-          >
-            <option value="Raleway">Raleway</option>
-            <option value="Arial">Arial</option>
-            <option value="Roboto">Roboto</option>
-            <option value="Montserrat">Montserrat</option>
-          </select>
-        </div>
-
-        <div className="edit-form-group">
-          <label>Button Color</label>
-          <input
-            type="color"
-            name="buttonColor"
-            value={profile.buttonColor}
-            onChange={handleChange}
-          />
-        </div>
+      <form
+        className="edit-profile-form profile-editor-form"
+        onSubmit={handleSubmit}
+      >
+        <ProfileCustomizationFields
+          profile={profile}
+          onChange={handleChange}
+          onImageSelect={handleImageSelect}
+          uploadingImage={uploadingImage}
+          imageError={imageError}
+          imageSuccess={imageSuccess}
+        />
 
         {error && <p className="error-message">{error}</p>}
         {success && <p className="success-message">{success}</p>}

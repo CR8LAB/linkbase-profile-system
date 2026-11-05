@@ -8,6 +8,7 @@ import {
   updateMyProfile,
   getMyProfile,
   uploadMyPhoto,
+  uploadProfileLogo,
 } from "../controllers/profileController.js";
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
@@ -22,7 +23,7 @@ router.post("/", authenticate, requireAdmin, createProfile);
 
 router.patch("/:publicId/assign", authenticate, requireAdmin, assignProfile);
 
-router.patch("/:publicId", authenticate, requireAdmin, updateProfile);
+router.patch("/:publicId", authenticate, updateProfile);
 
 // CUSTOMER - MUST BE BEFORE PUBLIC PROFILE ROUTE
 router.get("/my-profile", authenticate, getMyProfile);
@@ -38,6 +39,13 @@ router.post(
   authenticate,
   upload.single("photo"),
   uploadMyPhoto,
+);
+
+router.post(
+  "/:publicId/logo",
+  authenticate,
+  upload.single("logo"),
+  uploadProfileLogo,
 );
 
 export default router;

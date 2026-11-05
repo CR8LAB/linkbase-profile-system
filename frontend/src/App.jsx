@@ -12,6 +12,8 @@ import ManageSocialLinks from "./pages/ManageSocialLinks";
 import ClaimProfile from "./pages/ClaimProfile.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import CompanyManagement from "./pages/CompanyManagement.jsx";
+import CustomerManagement from "./pages/CustomerManagement.jsx";
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/companies" element={<CompanyManagement />} />
+      <Route path="/admin/customers" element={<CustomerManagement />} />
 
       <Route path="/dashboard" element={<CustomerDashboard />} />
 

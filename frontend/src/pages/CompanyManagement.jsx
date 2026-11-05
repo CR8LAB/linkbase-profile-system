@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../apiBase.js";
+import AdminPageLayout from "../components/AdminPageLayout.jsx";
 
 const fonts = ["Raleway", "Arial", "Roboto", "Montserrat"];
 
@@ -107,7 +108,7 @@ function CompanyManagement() {
   }
 
   return (
-    <div className="admin-content">
+    <AdminPageLayout>
       <header className="admin-header">
         <h2>Companies</h2>
         <span>Company Management</span>
@@ -207,7 +208,7 @@ function CompanyManagement() {
           ))}
         </div>
       </section>
-    </div>
+    </AdminPageLayout>
   );
 }
 

@@ -7,6 +7,7 @@ export const profileCustomizationFields = [
   "phone",
   "websiteUrl",
   "fontFamily",
+  "bodyTextColor",
   "backgroundColor",
   "buttonColor",
   "buttonTextColor",
@@ -19,7 +20,12 @@ export function canCustomizeProfile(user, profile) {
   );
 }
 
-const colorFields = ["backgroundColor", "buttonColor", "buttonTextColor"];
+const colorFields = [
+  "bodyTextColor",
+  "backgroundColor",
+  "buttonColor",
+  "buttonTextColor",
+];
 
 export function validateProfileCustomization(body = {}) {
   const updates = {};

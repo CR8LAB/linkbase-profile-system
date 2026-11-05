@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
+import WorkspaceNavigation from "../components/WorkspaceNavigation.jsx";
 
 function EditMyProfile() {
   const navigate = useNavigate();
@@ -148,6 +149,7 @@ function EditMyProfile() {
             phone: profile.phone,
             websiteUrl: profile.websiteUrl,
             fontFamily: profile.fontFamily,
+            bodyTextColor: profile.bodyTextColor,
             backgroundColor: profile.backgroundColor,
             buttonColor: profile.buttonColor,
             buttonTextColor: profile.buttonTextColor,
@@ -170,14 +172,36 @@ function EditMyProfile() {
     }
   }
 
-  if (loading) return <p>Loading your profile...</p>;
+  if (loading) {
+    return (
+      <div className="customer-edit-page">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <p>Loading your profile...</p>
+      </div>
+    );
+  }
 
-  if (error && !profile) return <p>{error}</p>;
+  if (error && !profile) {
+    return (
+      <div className="customer-edit-page">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <p>{error}</p>
+      </div>
+    );
+  }
 
-  if (!profile) return <p>No profile assigned.</p>;
+  if (!profile) {
+    return (
+      <div className="customer-edit-page">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <p>No profile assigned.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="customer-edit-page">
+      <WorkspaceNavigation role="CUSTOMER" />
       <div className="customer-edit-card profile-editor-container">
         <h1>Edit My Profile</h1>
         <p>Update your personal contact information.</p>

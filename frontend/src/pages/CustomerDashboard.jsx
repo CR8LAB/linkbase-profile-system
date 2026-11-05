@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import WorkspaceNavigation from "../components/WorkspaceNavigation.jsx";
 
 function CustomerDashboard() {
   const navigate = useNavigate();
@@ -40,15 +41,30 @@ function CustomerDashboard() {
   }, []);
 
   if (loading) {
-    return <div className="customer-loading">Loading dashboard...</div>;
+    return (
+      <div className="customer-dashboard">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <div className="customer-loading">Loading dashboard...</div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="customer-loading">{error}</div>;
+    return (
+      <div className="customer-dashboard">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <div className="customer-loading">{error}</div>
+      </div>
+    );
   }
 
   if (!profile) {
-    return <div className="customer-loading">No profile assigned.</div>;
+    return (
+      <div className="customer-dashboard">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <div className="customer-loading">No profile assigned.</div>
+      </div>
+    );
   }
 
   const initials = profile.fullName
@@ -60,41 +76,7 @@ function CustomerDashboard() {
 
   return (
     <div className="customer-dashboard">
-      <aside className="customer-sidebar">
-        <div className="customer-brand">
-          <h2>
-            LinkBase<span>.</span>
-          </h2>
-          <p>Customer Portal</p>
-        </div>
-
-        <nav className="customer-nav">
-          <button className="customer-nav-active">
-            <span>▦</span> Dashboard
-          </button>
-
-          <button onClick={() => navigate("/dashboard/edit")}>
-            <span>✎</span> Edit My Profile
-          </button>
-
-          <button onClick={() => navigate("/dashboard/social-links")}>
-            <span>◎</span> Social Media Links
-          </button>
-
-          <a
-            href={`/profile/${profile.publicId}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span>↗</span> View Public Profile
-          </a>
-        </nav>
-
-        <div className="customer-sidebar-footer">
-          <p>Powered by</p>
-          <strong>LinkBase</strong>
-        </div>
-      </aside>
+      <WorkspaceNavigation role="CUSTOMER" />
 
       <main className="customer-main">
         <header className="customer-header">
@@ -103,7 +85,7 @@ function CustomerDashboard() {
             <p>Manage your digital business card.</p>
           </div>
 
-          <div className="customer-account">
+          <div className="customer-account" id="account">
             <div className="customer-account-avatar">{initials}</div>
             <span>{profile.fullName}</span>
           </div>

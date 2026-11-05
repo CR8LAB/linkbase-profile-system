@@ -1,0 +1,2 @@
+ALTER TABLE "Profile"
+ADD COLUMN "bodyTextColor" TEXT NOT NULL DEFAULT '#101d3b';

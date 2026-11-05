@@ -14,6 +14,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import CompanyManagement from "./pages/CompanyManagement.jsx";
 import CustomerManagement from "./pages/CustomerManagement.jsx";
+import RequireRole from "./components/RequireRole.jsx";
 
 function App() {
   return (
@@ -23,25 +24,27 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/companies" element={<CompanyManagement />} />
-      <Route path="/admin/customers" element={<CustomerManagement />} />
+      <Route element={<RequireRole role="ADMIN" />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/companies" element={<CompanyManagement />} />
+        <Route path="/admin/customers" element={<CustomerManagement />} />
+        <Route path="/admin/profiles" element={<Profiles />} />
+        <Route
+          path="/admin/profiles/:publicId/edit"
+          element={<EditProfile />}
+        />
+        <Route path="/admin/profiles/create" element={<CreateProfile />} />
+      </Route>
 
-      <Route path="/dashboard" element={<CustomerDashboard />} />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-
-      <Route path="/admin/profiles" element={<Profiles />} />
-
-      <Route path="/admin/profiles/:publicId/edit" element={<EditProfile />} />
-
-      <Route path="/admin/profiles/create" element={<CreateProfile />} />
+      <Route element={<RequireRole role="CUSTOMER" />}>
+        <Route path="/dashboard" element={<CustomerDashboard />} />
+        <Route path="/dashboard/edit" element={<EditMyProfile />} />
+        <Route path="/dashboard/social-links" element={<ManageSocialLinks />} />
+      </Route>
 
       <Route path="/profile/:publicId" element={<PublicProfile />} />
 
-      <Route path="/dashboard/edit" element={<EditMyProfile />} />
-
-      <Route path="/dashboard/social-links" element={<ManageSocialLinks />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

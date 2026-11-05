@@ -54,7 +54,9 @@ function PublicProfileCard({ profile, preview = false }) {
   const cardStyle = {
     backgroundColor: profile.backgroundColor || "#ffffff",
     fontFamily: profile.fontFamily || "Raleway, sans-serif",
+    color: profile.bodyTextColor || "#101d3b",
   };
+  const bodyTextStyle = { color: profile.bodyTextColor || "#101d3b" };
   const buttonStyle = {
     backgroundColor: profile.buttonColor || "#101d3b",
     color: profile.buttonTextColor || "#ffffff",
@@ -81,17 +83,21 @@ function PublicProfileCard({ profile, preview = false }) {
             className="public-profile-photo"
           />
         ) : (
-          <div className="public-profile-placeholder">
+          <div className="public-profile-placeholder" style={bodyTextStyle}>
             {profile.fullName?.charAt(0).toUpperCase()}
           </div>
         )}
 
-        <h1>{profile.fullName}</h1>
-        <p className="public-job-title">{profile.jobTitle}</p>
+        <h1 style={bodyTextStyle}>{profile.fullName}</h1>
+        <p className="public-job-title" style={bodyTextStyle}>
+          {profile.jobTitle}
+        </p>
 
         <div className="public-qr-code">
-          <QRCodeSVG value={profileUrl} size={150} level="H" />
-          <p>Scan to view my digital profile</p>
+          <div className="public-qr-code-surface">
+            <QRCodeSVG value={profileUrl} size={150} level="H" marginSize={4} />
+          </div>
+          <p style={bodyTextStyle}>Scan to view my digital profile</p>
         </div>
 
         {profile.email && (
@@ -148,6 +154,7 @@ function PublicProfileCard({ profile, preview = false }) {
                   className={`public-social-link ${social.platform.toLowerCase()}`}
                   aria-label={social.platform}
                   title={social.platform}
+                  style={Icon ? undefined : bodyTextStyle}
                 >
                   {Icon ? <Icon /> : social.platform.charAt(0).toUpperCase()}
                 </a>
@@ -156,7 +163,9 @@ function PublicProfileCard({ profile, preview = false }) {
           </div>
         )}
 
-        <p className="public-profile-id">{profile.publicId || "Preview"}</p>
+        <p className="public-profile-id" style={bodyTextStyle}>
+          {profile.publicId || "Preview"}
+        </p>
       </div>
     </div>
   );

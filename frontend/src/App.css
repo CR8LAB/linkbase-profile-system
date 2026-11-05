@@ -176,6 +176,82 @@
   min-width: 0;
 }
 
+.admin-workspace {
+  min-height: 100vh;
+  background: #f4f6fa;
+}
+
+.admin-workspace > .admin-content {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.workspace-navigation {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 24px;
+  border-bottom: 1px solid #dce1e9;
+  background: #ffffff;
+}
+
+.workspace-navigation-brand {
+  flex: 0 0 auto;
+  color: #101d3b;
+  font-size: 19px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.workspace-navigation nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-navigation-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-navigation-link:hover,
+.workspace-navigation-link.active {
+  background: #eaf1f3;
+  color: #174e61;
+}
+
+.workspace-logout-button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspace-logout-button:hover {
+  border-color: #174e61;
+  color: #174e61;
+}
+
 .admin-header {
   display: flex;
   justify-content: space-between;
@@ -623,6 +699,15 @@
   gap: 8px;
 }
 
+.public-qr-code-surface {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  background: #ffffff;
+  line-height: 0;
+}
+
 .public-qr-code p {
   font-size: 12px;
   color: #64748b;
@@ -640,9 +725,14 @@
 .customer-dashboard {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   background: #f4f6fa;
   font-family: "Raleway", sans-serif;
   color: #101d3b;
+}
+
+.customer-dashboard > .workspace-navigation {
+  width: 100%;
 }
 
 .customer-sidebar {
@@ -1048,9 +1138,21 @@
   background: #f4f6fa;
   padding: 45px 20px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   font-family: "Raleway", sans-serif;
+}
+
+.customer-edit-page > .workspace-navigation {
+  width: min(100%, 1120px);
+  margin: 0 auto 28px;
+  border: 1px solid #dce1e9;
+  border-radius: 8px;
+}
+
+.customer-edit-page > .customer-edit-card {
+  max-width: 1120px;
 }
 
 .customer-edit-card {
@@ -1118,6 +1220,26 @@
 }
 
 @media (max-width: 600px) {
+  .workspace-navigation {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .workspace-navigation nav {
+    order: 3;
+    flex: 1 0 100%;
+    overflow-x: auto;
+  }
+
+  .workspace-navigation-link {
+    padding: 7px 9px;
+  }
+
+  .admin-workspace > .admin-content {
+    padding: 22px 16px;
+  }
+
   .customer-edit-page {
     padding: 25px 15px;
   }

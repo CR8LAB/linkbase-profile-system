@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
+import AdminPageLayout from "../components/AdminPageLayout.jsx";
 
 function EditProfile() {
   const { publicId } = useParams();
@@ -142,15 +143,15 @@ function EditProfile() {
   }
 
   if (loading) {
-    return <div className="admin-content">Loading profile...</div>;
+    return <AdminPageLayout>Loading profile...</AdminPageLayout>;
   }
 
   if (!profile) {
-    return <div className="admin-content">{error || "Profile not found."}</div>;
+    return <AdminPageLayout>{error || "Profile not found."}</AdminPageLayout>;
   }
 
   return (
-    <div className="admin-content">
+    <AdminPageLayout>
       <header className="admin-header">
         <h2>Edit Profile</h2>
         <span>{publicId}</span>
@@ -191,7 +192,7 @@ function EditProfile() {
           </button>
         </div>
       </form>
-    </div>
+    </AdminPageLayout>
   );
 }
 

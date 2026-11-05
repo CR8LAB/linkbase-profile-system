@@ -35,6 +35,7 @@ model Profile {
   logoUrl         String?
   fontFamily      String?
   buttonColor     String?
+  bodyTextColor   String  @default("#101d3b")
   backgroundColor String  @default("#ffffff")
   buttonTextColor String  @default("#ffffff")
   pdfUrl          String?

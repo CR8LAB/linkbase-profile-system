@@ -20,6 +20,7 @@ export async function createProfile(req, res) {
       logoUrl,
       fontFamily,
       buttonColor,
+      bodyTextColor,
       backgroundColor,
       buttonTextColor,
     } = req.body;
@@ -37,17 +38,7 @@ export async function createProfile(req, res) {
       });
     }
 
-    const validation = validateProfileCustomization({
-      fullName,
-      jobTitle,
-      email,
-      phone,
-      websiteUrl,
-      fontFamily,
-      buttonColor,
-      backgroundColor,
-      buttonTextColor,
-    });
+    const validation = validateProfileCustomization(req.body || {});
 
     if (validation.error) {
       return res.status(400).json({ message: validation.error });
@@ -130,6 +121,7 @@ export async function updateProfile(req, res) {
         logoUrl: true,
         fontFamily: true,
         buttonColor: true,
+        bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
         companyId: true,
@@ -168,6 +160,7 @@ export async function getProfile(req, res) {
         logoUrl: true,
         fontFamily: true,
         buttonColor: true,
+        bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
         socialLinks: {
@@ -223,6 +216,7 @@ export async function getMyProfile(req, res) {
         logoUrl: true,
         fontFamily: true,
         buttonColor: true,
+        bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
         socialLinks: {

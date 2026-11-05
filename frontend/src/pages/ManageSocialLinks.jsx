@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import WorkspaceNavigation from "../components/WorkspaceNavigation.jsx";
 
 const platforms = [
   "LinkedIn",
@@ -141,11 +142,26 @@ function ManageSocialLinks() {
     }
   }
 
-  if (loading) return <p>Loading social links...</p>;
-  if (!profile) return <p>{error || "Profile not found."}</p>;
+  if (loading) {
+    return (
+      <div className="customer-edit-page">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <p>Loading social links...</p>
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="customer-edit-page">
+        <WorkspaceNavigation role="CUSTOMER" />
+        <p>{error || "Profile not found."}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="customer-edit-page">
+      <WorkspaceNavigation role="CUSTOMER" />
       <div className="customer-edit-card social-manager-card">
         <h1>My Social Links</h1>
         <p>Manage the social media links displayed on your public profile.</p>

@@ -99,6 +99,16 @@ function ProfileCustomizationFields({
         <h3>Appearance</h3>
         <div className="profile-color-grid">
           <div className="edit-form-group">
+            <label htmlFor="bodyTextColor">Body text color</label>
+            <input
+              id="bodyTextColor"
+              type="color"
+              name="bodyTextColor"
+              value={profile.bodyTextColor || "#101d3b"}
+              onChange={onChange}
+            />
+          </div>
+          <div className="edit-form-group">
             <label htmlFor="backgroundColor">Background color</label>
             <input
               id="backgroundColor"

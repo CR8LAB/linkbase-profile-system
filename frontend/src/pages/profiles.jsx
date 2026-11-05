@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
+import AdminPageLayout from "../components/AdminPageLayout.jsx";
 
 function Profiles() {
   const [companies, setCompanies] = useState([]);
@@ -126,7 +127,7 @@ function Profiles() {
   }
 
   return (
-    <div className="admin-content">
+    <AdminPageLayout>
       <header className="admin-header">
         <h2>Profiles</h2>
         <span>Profile Management</span>
@@ -254,9 +255,11 @@ function Profiles() {
 
                 <button
                   className="profile-edit-button"
-                  onClick={() => {
-                    window.location.href = `/admin/profiles/${profile.publicId}/edit`;
-                  }}
+                  onClick={() =>
+                    navigate(
+                      `/admin/profiles/${encodeURIComponent(profile.publicId)}/edit`,
+                    )
+                  }
                 >
                   Edit Profile
                 </button>
@@ -267,7 +270,7 @@ function Profiles() {
           {profiles.length === 0 && <p>No profiles found for this company.</p>}
         </div>
       )}
-    </div>
+    </AdminPageLayout>
   );
 }
 

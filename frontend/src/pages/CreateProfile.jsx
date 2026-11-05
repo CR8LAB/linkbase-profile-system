@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
+import AdminPageLayout from "../components/AdminPageLayout.jsx";
 
 function CreateProfile() {
   const navigate = useNavigate();
@@ -105,7 +106,7 @@ function CreateProfile() {
   }
 
   return (
-    <div className="admin-content">
+    <AdminPageLayout>
       <header className="admin-header">
         <h2>Create Profile</h2>
         <span>New Digital Business Card</span>
@@ -265,7 +266,7 @@ function CreateProfile() {
           </button>
         </div>
       </form>
-    </div>
+    </AdminPageLayout>
   );
 }
 

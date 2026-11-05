@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../apiBase.js";
+import AdminPageLayout from "../components/AdminPageLayout.jsx";
 
 function CustomerManagement() {
   const [customers, setCustomers] = useState([]);
@@ -135,7 +136,7 @@ function CustomerManagement() {
   }
 
   return (
-    <div className="admin-content">
+    <AdminPageLayout>
       <header className="admin-header">
         <h2>Customers</h2>
         <span>Accounts and profile assignments</span>
@@ -245,7 +246,7 @@ function CustomerManagement() {
           ))}
         </div>
       </section>
-    </div>
+    </AdminPageLayout>
   );
 }
 

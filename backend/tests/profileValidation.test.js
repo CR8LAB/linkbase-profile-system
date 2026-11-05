@@ -35,6 +35,7 @@ test("profile customization accepts supported fields and normalizes values", () 
   const result = validateProfileCustomization({
     fullName: "  Ada Lovelace  ",
     email: "ada@example.com",
+    bodyTextColor: "#A1B2C3",
     backgroundColor: "#AABBCC",
     buttonColor: "#123456",
     buttonTextColor: "#ffffff",
@@ -47,6 +48,7 @@ test("profile customization accepts supported fields and normalizes values", () 
     updates: {
       fullName: "Ada Lovelace",
       email: "ada@example.com",
+      bodyTextColor: "#a1b2c3",
       backgroundColor: "#aabbcc",
       buttonColor: "#123456",
       buttonTextColor: "#ffffff",
@@ -61,6 +63,7 @@ test("profile customization rejects invalid colors, fonts, URLs and names", () =
   for (const body of [
     { fullName: "  " },
     { backgroundColor: "url(javascript:alert(1))" },
+    { bodyTextColor: "#xyz" },
     { buttonColor: "#abc" },
     { buttonTextColor: "red" },
     { fontFamily: "Unsupported Font" },

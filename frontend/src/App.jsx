@@ -15,6 +15,7 @@ import ResetPassword from "./pages/ResetPassword.jsx";
 import CompanyManagement from "./pages/CompanyManagement.jsx";
 import CustomerManagement from "./pages/CustomerManagement.jsx";
 import RequireRole from "./components/RequireRole.jsx";
+import ShortUrlRedirect from "./pages/ShortUrlRedirect.jsx";
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
       </Route>
 
       <Route path="/profile/:publicId" element={<PublicProfile />} />
+      <Route path="/:shortCode" element={<ShortUrlRedirect />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

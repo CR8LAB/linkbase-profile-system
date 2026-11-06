@@ -54,3 +54,4 @@ test("claim and reset enforce the shared password policy", async () => {
     assert.match(response.body.message, /12 characters/);
   }
 });
+

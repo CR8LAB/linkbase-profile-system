@@ -3,6 +3,7 @@ import test from "node:test";
 import express from "express";
 import {
   createOneTimeToken,
+  emailsMatch,
   hashOneTimeToken,
   isValidEmail,
   isValidPassword,
@@ -16,6 +17,9 @@ test("email validation and normalization are consistent", () => {
   assert.equal(isValidEmail("invalid-address"), false);
   assert.equal(isValidEmail("user @example.com"), false);
   assert.equal(normalizeEmail(" User@Example.com "), "user@example.com");
+  assert.equal(emailsMatch("User@Example.com", " user@example.com "), true);
+  assert.equal(emailsMatch("user@example.com", "other@example.com"), false);
+  assert.equal(emailsMatch(null, "user@example.com"), false);
 });
 
 test("password validation enforces minimum length and bcrypt byte limit", () => {

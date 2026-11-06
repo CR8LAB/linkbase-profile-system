@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canCustomizeProfile,
+  customerProfileCustomizationFields,
   profileCustomizationFields,
   validateProfileCustomization,
 } from "../src/services/profileValidation.js";
@@ -41,6 +42,7 @@ test("profile customization accepts supported fields and normalizes values", () 
     buttonTextColor: "#ffffff",
     fontFamily: "Montserrat",
     userId: "cannot-be-changed",
+    shortCode: "cannot-be-changed",
     photoUrl: "cannot-be-changed",
   });
 
@@ -57,6 +59,7 @@ test("profile customization accepts supported fields and normalizes values", () 
   });
   assert.equal(profileCustomizationFields.includes("photoUrl"), false);
   assert.equal(profileCustomizationFields.includes("userId"), false);
+  assert.equal(profileCustomizationFields.includes("shortCode"), false);
 });
 
 test("profile customization rejects invalid colors, fonts, URLs and names", () => {
@@ -72,4 +75,34 @@ test("profile customization rejects invalid colors, fonts, URLs and names", () =
   ]) {
     assert.ok(validateProfileCustomization(body).error, JSON.stringify(body));
   }
+});
+
+test("customer customization is limited to personal and contact fields", () => {
+  assert.deepEqual(customerProfileCustomizationFields, [
+    "fullName",
+    "jobTitle",
+    "email",
+    "phone",
+    "websiteUrl",
+  ]);
+
+  assert.deepEqual(
+    validateProfileCustomization(
+      {
+        fullName: " Ada Lovelace ",
+        email: "ada@example.com",
+        buttonColor: "#123456",
+      },
+      customerProfileCustomizationFields,
+    ),
+    { error: "buttonColor cannot be changed by this user" },
+  );
+
+  assert.deepEqual(
+    validateProfileCustomization(
+      { fullName: " Ada Lovelace ", email: "ada@example.com" },
+      customerProfileCustomizationFields,
+    ),
+    { updates: { fullName: "Ada Lovelace", email: "ada@example.com" } },
+  );
 });

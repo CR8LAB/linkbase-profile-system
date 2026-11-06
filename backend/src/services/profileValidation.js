@@ -13,6 +13,14 @@ export const profileCustomizationFields = [
   "buttonTextColor",
 ];
 
+export const customerProfileCustomizationFields = [
+  "fullName",
+  "jobTitle",
+  "email",
+  "phone",
+  "websiteUrl",
+];
+
 export function canCustomizeProfile(user, profile) {
   return (
     user?.role === "ADMIN" ||
@@ -27,10 +35,20 @@ const colorFields = [
   "buttonTextColor",
 ];
 
-export function validateProfileCustomization(body = {}) {
+export function validateProfileCustomization(
+  body = {},
+  allowedFields = profileCustomizationFields,
+) {
   const updates = {};
+  const allowed = new Set(allowedFields);
 
   for (const field of profileCustomizationFields) {
+    if (Object.hasOwn(body, field) && !allowed.has(field)) {
+      return { error: `${field} cannot be changed by this user` };
+    }
+  }
+
+  for (const field of allowedFields) {
     if (!Object.hasOwn(body, field)) continue;
 
     const value = body[field];

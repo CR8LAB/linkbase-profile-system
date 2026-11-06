@@ -26,6 +26,7 @@ model Company {
 model Profile {
   id              String  @id @default(cuid())
   publicId        String  @unique
+  shortCode       String  @unique
   fullName        String
   jobTitle        String?
   email           String?

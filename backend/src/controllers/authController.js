@@ -3,6 +3,7 @@ import prisma from "../config/prisma.js";
 import jwt from "jsonwebtoken";
 import {
   createOneTimeToken,
+  emailsMatch,
   hashOneTimeToken,
   isValidEmail,
   isValidOneTimeToken,
@@ -31,11 +32,14 @@ export async function inviteProfileClaim(req, res) {
     const invitation = await prisma.$transaction(async (tx) => {
       const profile = await tx.profile.findUnique({
         where: { publicId },
-        select: { id: true, fullName: true, userId: true },
+        select: { id: true, fullName: true, email: true, userId: true },
       });
 
       if (!profile) throw new Error("PROFILE_NOT_FOUND");
       if (profile.userId) throw new Error("PROFILE_ALREADY_CLAIMED");
+      if (!emailsMatch(profile.email, normalizedEmail)) {
+        throw new Error("PROFILE_EMAIL_MISMATCH");
+      }
 
       const existingUser = await tx.user.findUnique({
         where: { email: normalizedEmail },
@@ -91,6 +95,12 @@ export async function inviteProfileClaim(req, res) {
       return res.status(404).json({ message: "Profile not found" });
     }
 
+    if (error.message === "PROFILE_EMAIL_MISMATCH") {
+      return res.status(400).json({
+        message: "Invitation email must match the email assigned to the profile",
+      });
+    }
+
     if (
       ["PROFILE_ALREADY_CLAIMED", "ACCOUNT_ALREADY_EXISTS"].includes(
         error.message,
@@ -132,6 +142,15 @@ export async function claimProfile(req, res) {
       });
 
       if (!claimToken || claimToken.usedAt || claimToken.expiresAt <= now) {
+        throw new Error("INVALID_CLAIM_TOKEN");
+      }
+
+      const profile = await tx.profile.findUnique({
+        where: { id: claimToken.profileId },
+        select: { email: true },
+      });
+
+      if (!profile || !emailsMatch(profile.email, claimToken.email)) {
         throw new Error("INVALID_CLAIM_TOKEN");
       }
 

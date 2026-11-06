@@ -4,11 +4,15 @@ import profileRoutes from "./routes/profileRoutes.js";
 import socialLinkRoutes from "./routes/socialLinkRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import shortUrlRoutes from "./routes/shortUrlRoutes.js";
+import { redirectShortCode } from "./controllers/shortUrlController.js";
 import cors from "cors";
 
 // 1. Create the Express application
 const app = express();
-const allowedOrigins = (process.env.FRONTEND_ORIGINS || "http://localhost:5173")
+const allowedOrigins = (
+  process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://127.0.0.1:4173"
+)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -29,6 +33,7 @@ app.use("/api/profiles", profileRoutes);
 app.use("/api/social-links", socialLinkRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/short-links", shortUrlRoutes);
 
 // 3. Export the application
 app.get("/api/health", (req, res) => {
@@ -37,5 +42,7 @@ app.get("/api/health", (req, res) => {
     message: "LinkBase API is Running",
   });
 });
+
+app.get("/:shortCode", redirectShortCode);
 
 export default app;

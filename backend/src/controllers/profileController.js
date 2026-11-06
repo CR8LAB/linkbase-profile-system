@@ -3,8 +3,10 @@ import { bucket } from "../config/storage.js";
 import { randomUUID } from "node:crypto";
 import {
   canCustomizeProfile,
+  customerProfileCustomizationFields,
   validateProfileCustomization,
 } from "../services/profileValidation.js";
+import { generateShortCode } from "../services/shortCode.js";
 
 export async function createProfile(req, res) {
   try {
@@ -44,15 +46,31 @@ export async function createProfile(req, res) {
       return res.status(400).json({ message: validation.error });
     }
 
-    const profile = await prisma.profile.create({
-      data: {
-        publicId: publicId.trim(),
-        companyId: companyId.trim(),
-        ...validation.updates,
-        photoUrl,
-        logoUrl,
-      },
-    });
+    let profile;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        profile = await prisma.profile.create({
+          data: {
+            publicId: publicId.trim(),
+            shortCode: generateShortCode(),
+            companyId: companyId.trim(),
+            ...validation.updates,
+            photoUrl,
+            logoUrl,
+          },
+        });
+        break;
+      } catch (error) {
+        const target = JSON.stringify(error.meta?.target || "").toLowerCase();
+        if (error.code !== "P2002" || !target.includes("shortcode")) {
+          throw error;
+        }
+      }
+    }
+
+    if (!profile)
+      throw new Error("Could not generate a unique profile short code");
 
     return res.status(201).json({
       success: true,
@@ -86,7 +104,11 @@ export async function updateProfile(req, res) {
       return res.status(403).json({ message: "You cannot edit this profile" });
     }
 
-    const validation = validateProfileCustomization(body);
+    const allowedFields =
+      req.user.role === "CUSTOMER"
+        ? customerProfileCustomizationFields
+        : undefined;
+    const validation = validateProfileCustomization(body, allowedFields);
     if (validation.error) {
       return res.status(400).json({ message: validation.error });
     }
@@ -112,6 +134,7 @@ export async function updateProfile(req, res) {
       data: updates,
       select: {
         publicId: true,
+        shortCode: true,
         fullName: true,
         email: true,
         phone: true,
@@ -151,6 +174,7 @@ export async function getProfile(req, res) {
       where: { publicId },
       select: {
         publicId: true,
+        shortCode: true,
         fullName: true,
         jobTitle: true,
         email: true,
@@ -207,6 +231,7 @@ export async function getMyProfile(req, res) {
       select: {
         id: true,
         publicId: true,
+        shortCode: true,
         fullName: true,
         jobTitle: true,
         email: true,

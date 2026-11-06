@@ -4,6 +4,16 @@ export function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
 
+export function emailsMatch(firstEmail, secondEmail) {
+  return (
+    typeof firstEmail === "string" &&
+    typeof secondEmail === "string" &&
+    isValidEmail(firstEmail.trim()) &&
+    isValidEmail(secondEmail.trim()) &&
+    normalizeEmail(firstEmail) === normalizeEmail(secondEmail)
+  );
+}
+
 export function isValidEmail(email) {
   return (
     typeof email === "string" &&

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
 import AdminPageLayout from "../components/AdminPageLayout.jsx";
+import ProfileQRCode from "../components/ProfileQRCode.jsx";
 
 function EditProfile() {
   const { publicId } = useParams();
@@ -192,6 +193,17 @@ function EditProfile() {
           </button>
         </div>
       </form>
+
+      <section
+        className="admin-qr-management"
+        aria-labelledby="profile-qr-title"
+      >
+        <h3 id="profile-qr-title">Profile QR Codes</h3>
+        <p>
+          Download digital versions or configure a physical manufacturing SVG.
+        </p>
+        <ProfileQRCode profile={profile} showManagementControls />
+      </section>
     </AdminPageLayout>
   );
 }

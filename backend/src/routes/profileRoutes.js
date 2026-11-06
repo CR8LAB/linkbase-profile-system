@@ -44,6 +44,7 @@ router.post(
 router.post(
   "/:publicId/logo",
   authenticate,
+  requireAdmin,
   upload.single("logo"),
   uploadProfileLogo,
 );

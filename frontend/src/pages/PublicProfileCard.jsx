@@ -1,4 +1,5 @@
-import { QRCodeSVG } from "qrcode.react";
+import ProfileQRCode from "../components/ProfileQRCode.jsx";
+import { Link } from "react-router-dom";
 import {
   FaFacebookF,
   FaInstagram,
@@ -50,7 +51,6 @@ function PublicProfileCard({ profile, preview = false }) {
     URL.revokeObjectURL(url);
   }
 
-  const profileUrl = `${window.location.origin}/profile/${encodeURIComponent(profile.publicId || "preview")}`;
   const cardStyle = {
     backgroundColor: profile.backgroundColor || "#ffffff",
     fontFamily: profile.fontFamily || "Raleway, sans-serif",
@@ -94,9 +94,7 @@ function PublicProfileCard({ profile, preview = false }) {
         </p>
 
         <div className="public-qr-code">
-          <div className="public-qr-code-surface">
-            <QRCodeSVG value={profileUrl} size={150} level="H" marginSize={4} />
-          </div>
+          <ProfileQRCode profile={profile} />
           <p style={bodyTextStyle}>Scan to view my digital profile</p>
         </div>
 
@@ -140,8 +138,20 @@ function PublicProfileCard({ profile, preview = false }) {
           Save Contact
         </button>
 
+        {!preview && (
+          <Link
+            to="/"
+            className="public-profile-button public-profile-login-button"
+          >
+            Login
+          </Link>
+        )}
+
         {profile.socialLinks?.length > 0 && (
           <div className="public-social-links">
+            <p className="public-social-label" style={bodyTextStyle}>
+              Follow us
+            </p>
             {profile.socialLinks.map((social) => {
               const Icon = socialIcons[social.platform.toLowerCase()];
 
@@ -163,9 +173,6 @@ function PublicProfileCard({ profile, preview = false }) {
           </div>
         )}
 
-        <p className="public-profile-id" style={bodyTextStyle}>
-          {profile.publicId || "Preview"}
-        </p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
 import PublicProfileCard from "./PublicProfileCard.jsx";
 
 function PublicProfile() {
@@ -13,7 +14,7 @@ function PublicProfile() {
     async function fetchProfile() {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/profiles/${publicId}`,
+          `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`,
         );
 
         const data = await response.json();

@@ -9,6 +9,7 @@ function ProfileCustomizationFields({
   uploadingImage,
   imageError,
   imageSuccess,
+  customerMode = false,
 }) {
   return (
     <div className="profile-editor-layout">
@@ -80,78 +81,84 @@ function ProfileCustomizationFields({
               disabled={Boolean(uploadingImage)}
             />
           </div>
-          <div>
-            <label htmlFor="company-logo-file">Add Company Logo</label>
-            <input
-              id="company-logo-file"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => onImageSelect(event, "logo")}
-              disabled={Boolean(uploadingImage)}
-            />
-          </div>
+          {!customerMode && (
+            <div>
+              <label htmlFor="company-logo-file">Add Company Logo</label>
+              <input
+                id="company-logo-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => onImageSelect(event, "logo")}
+                disabled={Boolean(uploadingImage)}
+              />
+            </div>
+          )}
         </div>
         <p className="profile-upload-note">JPG, PNG or WebP. Maximum 5 MB.</p>
         {uploadingImage && <p role="status">Uploading {uploadingImage}...</p>}
         {imageError && <p className="error-message">{imageError}</p>}
         {imageSuccess && <p className="success-message">{imageSuccess}</p>}
 
-        <h3>Appearance</h3>
-        <div className="profile-color-grid">
-          <div className="edit-form-group">
-            <label htmlFor="bodyTextColor">Body text color</label>
-            <input
-              id="bodyTextColor"
-              type="color"
-              name="bodyTextColor"
-              value={profile.bodyTextColor || "#101d3b"}
-              onChange={onChange}
-            />
-          </div>
-          <div className="edit-form-group">
-            <label htmlFor="backgroundColor">Background color</label>
-            <input
-              id="backgroundColor"
-              type="color"
-              name="backgroundColor"
-              value={profile.backgroundColor || "#ffffff"}
-              onChange={onChange}
-            />
-          </div>
-          <div className="edit-form-group">
-            <label htmlFor="fontFamily">Font family</label>
-            <select
-              id="fontFamily"
-              name="fontFamily"
-              value={profile.fontFamily || "Raleway"}
-              onChange={onChange}
-            >
-              {fontFamilies.map((font) => (
-                <option key={font}>{font}</option>
-              ))}
-            </select>
-          </div>
-          <div className="edit-form-group">
-            <label htmlFor="buttonColor">Button background</label>
-            <input
-              id="buttonColor"
-              type="color"
-              name="buttonColor"
-              value={profile.buttonColor || "#101d3b"}
-              onChange={onChange}
-            />
-          </div>
-          <div className="edit-form-group">
-            <label htmlFor="buttonTextColor">Button text color</label>
-            <input
-              id="buttonTextColor"
-              type="color"
-              name="buttonTextColor"
-              value={profile.buttonTextColor || "#ffffff"}
-              onChange={onChange}
-            />
-          </div>
-        </div>
+        {!customerMode && (
+          <>
+            <h3>Appearance</h3>
+            <div className="profile-color-grid">
+              <div className="edit-form-group">
+                <label htmlFor="bodyTextColor">Body text color</label>
+                <input
+                  id="bodyTextColor"
+                  type="color"
+                  name="bodyTextColor"
+                  value={profile.bodyTextColor || "#101d3b"}
+                  onChange={onChange}
+                />
+              </div>
+              <div className="edit-form-group">
+                <label htmlFor="backgroundColor">Background color</label>
+                <input
+                  id="backgroundColor"
+                  type="color"
+                  name="backgroundColor"
+                  value={profile.backgroundColor || "#ffffff"}
+                  onChange={onChange}
+                />
+              </div>
+              <div className="edit-form-group">
+                <label htmlFor="fontFamily">Font family</label>
+                <select
+                  id="fontFamily"
+                  name="fontFamily"
+                  value={profile.fontFamily || "Raleway"}
+                  onChange={onChange}
+                >
+                  {fontFamilies.map((font) => (
+                    <option key={font}>{font}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="edit-form-group">
+                <label htmlFor="buttonColor">Button background</label>
+                <input
+                  id="buttonColor"
+                  type="color"
+                  name="buttonColor"
+                  value={profile.buttonColor || "#101d3b"}
+                  onChange={onChange}
+                />
+              </div>
+              <div className="edit-form-group">
+                <label htmlFor="buttonTextColor">Button text color</label>
+                <input
+                  id="buttonTextColor"
+                  type="color"
+                  name="buttonTextColor"
+                  value={profile.buttonTextColor || "#ffffff"}
+                  onChange={onChange}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <aside

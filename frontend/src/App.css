@@ -679,7 +679,10 @@
 }
 
 .public-profile-button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   padding: 14px;
   margin-top: 12px;
@@ -694,6 +697,10 @@
 
 .public-profile-button:hover {
   background: #243657;
+}
+
+.public-profile-button svg {
+  flex: 0 0 auto;
 }
 
 .public-profile-login-button {

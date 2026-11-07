@@ -40,6 +40,10 @@ test("profile customization accepts supported fields and normalizes values", () 
     backgroundColor: "#AABBCC",
     buttonColor: "#123456",
     buttonTextColor: "#ffffff",
+    saveContactButtonColor: "#AABBCC",
+    saveContactButtonTextColor: "#DDEEFF",
+    socialLinkBackgroundColor: "#CCDDEE",
+    socialLinkIconColor: "#112233",
     fontFamily: "Montserrat",
     userId: "cannot-be-changed",
     shortCode: "cannot-be-changed",
@@ -54,6 +58,10 @@ test("profile customization accepts supported fields and normalizes values", () 
       backgroundColor: "#aabbcc",
       buttonColor: "#123456",
       buttonTextColor: "#ffffff",
+      saveContactButtonColor: "#aabbcc",
+      saveContactButtonTextColor: "#ddeeff",
+      socialLinkBackgroundColor: "#ccddee",
+      socialLinkIconColor: "#112233",
       fontFamily: "Montserrat",
     },
   });
@@ -69,6 +77,10 @@ test("profile customization rejects invalid colors, fonts, URLs and names", () =
     { bodyTextColor: "#xyz" },
     { buttonColor: "#abc" },
     { buttonTextColor: "red" },
+    { saveContactButtonColor: "#abc" },
+    { saveContactButtonTextColor: "blue" },
+    { socialLinkBackgroundColor: "#abc" },
+    { socialLinkIconColor: "not-a-color" },
     { fontFamily: "Unsupported Font" },
     { websiteUrl: "javascript:alert(1)" },
     { email: "not-an-email" },
@@ -77,32 +89,88 @@ test("profile customization rejects invalid colors, fonts, URLs and names", () =
   }
 });
 
-test("customer customization is limited to personal and contact fields", () => {
-  assert.deepEqual(customerProfileCustomizationFields, [
-    "fullName",
-    "jobTitle",
-    "email",
-    "phone",
-    "websiteUrl",
-  ]);
+test("admins and customers have the same profile customization fields", () => {
+  assert.deepEqual(customerProfileCustomizationFields, profileCustomizationFields);
 
   assert.deepEqual(
     validateProfileCustomization(
       {
         fullName: " Ada Lovelace ",
         email: "ada@example.com",
+        backgroundColor: "#aabbcc",
+        bodyTextColor: "#112233",
+        fontFamily: "Montserrat",
         buttonColor: "#123456",
+        buttonTextColor: "#ffffff",
+        saveContactButtonColor: "#334455",
+        saveContactButtonTextColor: "#ffffff",
+        socialLinkBackgroundColor: "#eeeeee",
+        socialLinkIconColor: "#222222",
       },
       customerProfileCustomizationFields,
     ),
-    { error: "buttonColor cannot be changed by this user" },
+    {
+      updates: {
+        fullName: "Ada Lovelace",
+        email: "ada@example.com",
+        backgroundColor: "#aabbcc",
+        bodyTextColor: "#112233",
+        fontFamily: "Montserrat",
+        buttonColor: "#123456",
+        buttonTextColor: "#ffffff",
+        saveContactButtonColor: "#334455",
+        saveContactButtonTextColor: "#ffffff",
+        socialLinkBackgroundColor: "#eeeeee",
+        socialLinkIconColor: "#222222",
+      },
+    },
+  );
+
+  assert.deepEqual(
+    validateProfileCustomization({
+      fullName: " Ada Lovelace ",
+      email: "ada@example.com",
+      backgroundColor: "#aabbcc",
+      bodyTextColor: "#112233",
+      fontFamily: "Montserrat",
+      buttonColor: "#123456",
+      buttonTextColor: "#ffffff",
+      saveContactButtonColor: "#334455",
+      saveContactButtonTextColor: "#ffffff",
+      socialLinkBackgroundColor: "#eeeeee",
+      socialLinkIconColor: "#222222",
+    }),
+    validateProfileCustomization(
+      {
+        fullName: " Ada Lovelace ",
+        email: "ada@example.com",
+        backgroundColor: "#aabbcc",
+        bodyTextColor: "#112233",
+        fontFamily: "Montserrat",
+        buttonColor: "#123456",
+        buttonTextColor: "#ffffff",
+        saveContactButtonColor: "#334455",
+        saveContactButtonTextColor: "#ffffff",
+        socialLinkBackgroundColor: "#eeeeee",
+        socialLinkIconColor: "#222222",
+      },
+      customerProfileCustomizationFields,
+    ),
   );
 
   assert.deepEqual(
     validateProfileCustomization(
-      { fullName: " Ada Lovelace ", email: "ada@example.com" },
+      {
+        fullName: " Ada Lovelace ",
+        email: "ada@example.com",
+      },
       customerProfileCustomizationFields,
     ),
-    { updates: { fullName: "Ada Lovelace", email: "ada@example.com" } },
+    {
+      updates: {
+        fullName: "Ada Lovelace",
+        email: "ada@example.com",
+      },
+    },
   );
 });

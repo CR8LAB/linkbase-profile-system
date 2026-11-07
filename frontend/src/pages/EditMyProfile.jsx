@@ -148,6 +148,15 @@ function EditMyProfile() {
             email: profile.email,
             phone: profile.phone,
             websiteUrl: profile.websiteUrl,
+            fontFamily: profile.fontFamily,
+            bodyTextColor: profile.bodyTextColor,
+            backgroundColor: profile.backgroundColor,
+            buttonColor: profile.buttonColor,
+            buttonTextColor: profile.buttonTextColor,
+            saveContactButtonColor: profile.saveContactButtonColor,
+            saveContactButtonTextColor: profile.saveContactButtonTextColor,
+            socialLinkBackgroundColor: profile.socialLinkBackgroundColor,
+            socialLinkIconColor: profile.socialLinkIconColor,
           }),
         },
       );
@@ -213,7 +222,6 @@ function EditMyProfile() {
             uploadingImage={uploadingImage}
             imageError={imageError}
             imageSuccess={imageSuccess}
-            customerMode
           />
 
           <div className="edit-form-actions">

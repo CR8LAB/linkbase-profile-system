@@ -11,6 +11,10 @@ export const profileCustomizationFields = [
   "backgroundColor",
   "buttonColor",
   "buttonTextColor",
+  "saveContactButtonColor",
+  "saveContactButtonTextColor",
+  "socialLinkBackgroundColor",
+  "socialLinkIconColor",
 ];
 
 export const customerProfileCustomizationFields = [
@@ -19,6 +23,15 @@ export const customerProfileCustomizationFields = [
   "email",
   "phone",
   "websiteUrl",
+  "fontFamily",
+  "bodyTextColor",
+  "backgroundColor",
+  "buttonColor",
+  "buttonTextColor",
+  "saveContactButtonColor",
+  "saveContactButtonTextColor",
+  "socialLinkBackgroundColor",
+  "socialLinkIconColor",
 ];
 
 export function canCustomizeProfile(user, profile) {
@@ -33,6 +46,10 @@ const colorFields = [
   "backgroundColor",
   "buttonColor",
   "buttonTextColor",
+  "saveContactButtonColor",
+  "saveContactButtonTextColor",
+  "socialLinkBackgroundColor",
+  "socialLinkIconColor",
 ];
 
 export function validateProfileCustomization(

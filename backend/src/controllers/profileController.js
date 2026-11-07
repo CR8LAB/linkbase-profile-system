@@ -25,6 +25,8 @@ export async function createProfile(req, res) {
       bodyTextColor,
       backgroundColor,
       buttonTextColor,
+      saveContactButtonColor,
+      saveContactButtonTextColor,
     } = req.body;
 
     if (
@@ -147,6 +149,10 @@ export async function updateProfile(req, res) {
         bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
+        saveContactButtonColor: true,
+        saveContactButtonTextColor: true,
+        socialLinkBackgroundColor: true,
+        socialLinkIconColor: true,
         companyId: true,
       },
     });
@@ -187,6 +193,10 @@ export async function getProfile(req, res) {
         bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
+        saveContactButtonColor: true,
+        saveContactButtonTextColor: true,
+        socialLinkBackgroundColor: true,
+        socialLinkIconColor: true,
         socialLinks: {
           select: {
             id: true,
@@ -244,6 +254,10 @@ export async function getMyProfile(req, res) {
         bodyTextColor: true,
         backgroundColor: true,
         buttonTextColor: true,
+        saveContactButtonColor: true,
+        saveContactButtonTextColor: true,
+        socialLinkBackgroundColor: true,
+        socialLinkIconColor: true,
         socialLinks: {
           select: {
             id: true,

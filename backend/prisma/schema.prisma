@@ -39,6 +39,10 @@ model Profile {
   bodyTextColor   String  @default("#101d3b")
   backgroundColor String  @default("#ffffff")
   buttonTextColor String  @default("#ffffff")
+  saveContactButtonColor     String @default("#101d3b")
+  saveContactButtonTextColor String @default("#ffffff")
+  socialLinkBackgroundColor  String @default("#f1f3f7")
+  socialLinkIconColor        String @default("#14213f")
   pdfUrl          String?
   visitCount      Int     @default(0)
 

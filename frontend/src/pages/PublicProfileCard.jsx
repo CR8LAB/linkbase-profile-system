@@ -8,6 +8,10 @@ import {
   FaYoutube,
   FaWhatsapp,
   FaTwitter,
+  FaEnvelope,
+  FaPhone,
+  FaGlobe,
+  FaAddressCard,
 } from "react-icons/fa";
 
 const socialIcons = {
@@ -61,6 +65,10 @@ function PublicProfileCard({ profile, preview = false }) {
     backgroundColor: profile.buttonColor || "#101d3b",
     color: profile.buttonTextColor || "#ffffff",
   };
+  const saveContactButtonStyle = {
+    backgroundColor: profile.saveContactButtonColor || "#101d3b",
+    color: profile.saveContactButtonTextColor || "#ffffff",
+  };
 
   return (
     <div
@@ -104,6 +112,7 @@ function PublicProfileCard({ profile, preview = false }) {
             className="public-profile-button"
             style={buttonStyle}
           >
+            <FaEnvelope aria-hidden="true" />
             Email Me
           </a>
         )}
@@ -114,6 +123,7 @@ function PublicProfileCard({ profile, preview = false }) {
             className="public-profile-button"
             style={buttonStyle}
           >
+            <FaPhone aria-hidden="true" />
             Call Me
           </a>
         )}
@@ -126,15 +136,17 @@ function PublicProfileCard({ profile, preview = false }) {
             className="public-profile-button"
             style={buttonStyle}
           >
+            <FaGlobe aria-hidden="true" />
             Visit Website
           </a>
         )}
 
         <button
           className="public-profile-button save-contact-button"
-          style={buttonStyle}
+          style={saveContactButtonStyle}
           onClick={saveContact}
         >
+          <FaAddressCard aria-hidden="true" />
           Save Contact
         </button>
 
@@ -164,7 +176,11 @@ function PublicProfileCard({ profile, preview = false }) {
                   className={`public-social-link ${social.platform.toLowerCase()}`}
                   aria-label={social.platform}
                   title={social.platform}
-                  style={Icon ? undefined : bodyTextStyle}
+                  style={{
+                    backgroundColor:
+                      profile.socialLinkBackgroundColor || "#f1f3f7",
+                    color: profile.socialLinkIconColor || "#14213f",
+                  }}
                 >
                   {Icon ? <Icon /> : social.platform.charAt(0).toUpperCase()}
                 </a>

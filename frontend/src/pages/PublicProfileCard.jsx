@@ -1,5 +1,6 @@
 import ProfileQRCode from "../components/ProfileQRCode.jsx";
 import { Link } from "react-router-dom";
+import { buildVCard } from "../utils/vCard.js";
 import {
   FaFacebookF,
   FaInstagram,
@@ -25,26 +26,9 @@ const socialIcons = {
   twitter: FaTwitter,
 };
 
-function escapeVCard(value = "") {
-  return String(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;");
-}
-
 function PublicProfileCard({ profile, preview = false }) {
   function saveContact() {
-    const vCard = [
-      "BEGIN:VCARD",
-      "VERSION:3.0",
-      `FN:${escapeVCard(profile.fullName)}`,
-      `TITLE:${escapeVCard(profile.jobTitle)}`,
-      `TEL;TYPE=CELL:${escapeVCard(profile.phone)}`,
-      `EMAIL;TYPE=WORK:${escapeVCard(profile.email)}`,
-      `URL:${escapeVCard(profile.websiteUrl)}`,
-      "END:VCARD",
-    ].join("\r\n");
+    const vCard = buildVCard(profile);
 
     const blob = new Blob([vCard], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);

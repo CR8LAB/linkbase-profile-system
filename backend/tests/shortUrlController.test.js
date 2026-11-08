@@ -3,9 +3,9 @@ import test from "node:test";
 import express from "express";
 import { createShortUrlHandlers } from "../src/controllers/shortUrlController.js";
 
-async function startServer(profileLookup) {
+async function startServer(profileLookup, publicAppUrl = "https://app.linkbase.co.za") {
   const { redirectShortCode, resolveShortCode } =
-    createShortUrlHandlers(profileLookup);
+    createShortUrlHandlers(profileLookup, publicAppUrl);
   const app = express();
   app.get("/api/short-links/:shortCode", resolveShortCode);
   app.get("/:shortCode", redirectShortCode);
@@ -37,7 +37,7 @@ test("short link redirects permanently assigned codes to existing public IDs", a
   assert.equal(response.status, 302);
   assert.equal(
     response.headers.get("location"),
-    "https://linkbase.co.za/profile/LB0099",
+    "https://app.linkbase.co.za/profile/LB0099",
   );
 });
 

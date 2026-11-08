@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import WorkspaceNavigation from "../components/WorkspaceNavigation.jsx";
+import { API_BASE_URL } from "../apiBase.js";
 
 const platforms = [
   "LinkedIn",
@@ -31,7 +32,7 @@ function ManageSocialLinks() {
     async function loadData() {
       try {
         const profileResponse = await fetch(
-          "http://localhost:5000/api/profiles/my-profile",
+          `${API_BASE_URL}/api/profiles/my-profile`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -48,7 +49,7 @@ function ManageSocialLinks() {
         setProfile(profileData.profile);
 
         const linksResponse = await fetch(
-          `http://localhost:5000/api/social-links/${profileData.profile.id}`,
+          `${API_BASE_URL}/api/social-links/${profileData.profile.id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -81,7 +82,7 @@ function ManageSocialLinks() {
     setSuccess("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/social-links", {
+      const response = await fetch(`${API_BASE_URL}/api/social-links`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,7 +119,7 @@ function ManageSocialLinks() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/social-links/${id}`,
+        `${API_BASE_URL}/api/social-links/${id}`,
         {
           method: "DELETE",
           headers: {

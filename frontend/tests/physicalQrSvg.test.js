@@ -12,7 +12,7 @@ import { getProfileShortUrl } from "../src/utils/profileShortUrl.js";
 
 test("qrcode.react renders the short URL as a minimum-version SVG with separate paths", () => {
   const shortUrl = getProfileShortUrl("a7c29c3d4e5f");
-  assert.equal(shortUrl, "https://linkbase.co.za/a7c29c3d4e5f");
+  assert.equal(shortUrl, "https://app.linkbase.co.za/a7c29c3d4e5f");
   const markup = renderToStaticMarkup(
     React.createElement(QRCodeSVG, {
       value: shortUrl,

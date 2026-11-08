@@ -1,7 +1,10 @@
 import prisma from "../config/prisma.js";
 import { isValidShortCode } from "../services/shortCode.js";
 
-export function createShortUrlHandlers(profileLookup) {
+export function createShortUrlHandlers(
+  profileLookup,
+  publicAppUrl = process.env.PUBLIC_APP_URL || "http://localhost:5173",
+) {
   async function findProfile(shortCode) {
     if (!isValidShortCode(shortCode)) return null;
     return profileLookup(shortCode.toLowerCase());
@@ -28,10 +31,12 @@ export function createShortUrlHandlers(profileLookup) {
       const profile = await findProfile(req.params.shortCode);
       if (!profile) return res.status(404).send("Short link not found");
 
-      return res.redirect(
-        302,
-        `https://linkbase.co.za/profile/${encodeURIComponent(profile.publicId)}`,
+      const destination = new URL(
+        `/profile/${encodeURIComponent(profile.publicId)}`,
+        publicAppUrl,
       );
+
+      return res.redirect(302, destination.toString());
     } catch (error) {
       console.error("Short link redirect failed:", error);
       return res.status(500).send("Could not resolve short link");

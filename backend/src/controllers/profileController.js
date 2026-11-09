@@ -7,6 +7,13 @@ import {
   validateProfileCustomization,
 } from "../services/profileValidation.js";
 import { generateShortCode } from "../services/shortCode.js";
+import {
+  getPdfDownloadUrl,
+  getProfilePdfObjectName,
+  removeStoredProfilePdf,
+  uploadAndReplaceProfilePdf,
+  validatePdfFile,
+} from "../services/profilePdf.js";
 
 export async function createProfile(req, res) {
   try {
@@ -153,13 +160,17 @@ export async function updateProfile(req, res) {
         saveContactButtonTextColor: true,
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
+        pdfUrl: true,
         companyId: true,
       },
     });
 
     return res.status(200).json({
       success: true,
-      profile,
+      profile: {
+        ...profile,
+        pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(publicId) : null,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -197,6 +208,7 @@ export async function getProfile(req, res) {
         saveContactButtonTextColor: true,
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
+        pdfUrl: true,
         socialLinks: {
           select: {
             id: true,
@@ -219,7 +231,10 @@ export async function getProfile(req, res) {
 
     return res.status(200).json({
       success: true,
-      profile,
+      profile: {
+        ...profile,
+        pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(publicId) : null,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -258,6 +273,7 @@ export async function getMyProfile(req, res) {
         saveContactButtonTextColor: true,
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
+        pdfUrl: true,
         socialLinks: {
           select: {
             id: true,
@@ -278,7 +294,10 @@ export async function getMyProfile(req, res) {
 
     return res.status(200).json({
       success: true,
-      profile,
+      profile: {
+        ...profile,
+        pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(profile.publicId) : null,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -499,4 +518,95 @@ export async function uploadMyPhoto(req, res) {
 
 export async function uploadProfileLogo(req, res) {
   return uploadProfileImage(req, res, "logoUrl");
+}
+
+export async function uploadProfilePdf(req, res) {
+  const validationError = validatePdfFile(req.file);
+  if (validationError) return res.status(400).json({ message: validationError });
+
+  const { publicId } = req.params;
+  try {
+    const profile = await prisma.profile.findUnique({ where: { publicId } });
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+    if (!canCustomizeProfile(req.user, profile)) {
+      return res.status(403).json({ message: "You cannot edit this profile" });
+    }
+
+    const updated = await uploadAndReplaceProfilePdf({
+      bucket,
+      profileId: profile.id,
+      publicId,
+      buffer: req.file.buffer,
+      previousPdfUrl: profile.pdfUrl,
+      persist: (pdfUrl) =>
+        prisma.profile.update({
+          where: { publicId },
+          data: { pdfUrl },
+          select: { publicId: true, pdfUrl: true },
+        }),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "PDF uploaded successfully",
+      profile: updated,
+    });
+  } catch (error) {
+    console.error("Profile PDF upload error:", error);
+    return res.status(500).json({ message: "Failed to upload PDF" });
+  }
+}
+
+export async function removeProfilePdf(req, res) {
+  const { publicId } = req.params;
+  try {
+    const profile = await prisma.profile.findUnique({ where: { publicId } });
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+    if (!canCustomizeProfile(req.user, profile)) {
+      return res.status(403).json({ message: "You cannot edit this profile" });
+    }
+    if (!profile.pdfUrl) {
+      return res.status(200).json({ success: true, profile: { publicId, pdfUrl: null } });
+    }
+
+    await removeStoredProfilePdf({
+      bucket,
+      profileId: profile.id,
+      previousPdfUrl: profile.pdfUrl,
+      clear: () => prisma.profile.update({ where: { publicId }, data: { pdfUrl: null } }),
+      restore: () => prisma.profile.update({ where: { publicId }, data: { pdfUrl: profile.pdfUrl } }),
+    });
+    return res.status(200).json({ success: true, profile: { publicId, pdfUrl: null } });
+  } catch (error) {
+    console.error("Profile PDF removal error:", error);
+    return res.status(500).json({ message: "Failed to remove PDF" });
+  }
+}
+
+export async function redirectProfilePdf(req, res) {
+  const { publicId } = req.params;
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { publicId },
+      select: { id: true, pdfUrl: true },
+    });
+    if (!profile?.pdfUrl) return res.status(404).json({ message: "PDF not found" });
+    const objectName = getProfilePdfObjectName(profile.pdfUrl, bucket.name, profile.id);
+    if (!objectName) return res.status(404).json({ message: "PDF not found" });
+
+    const file = bucket.file(objectName);
+    const [exists] = await file.exists();
+    if (!exists) return res.status(404).json({ message: "PDF not found" });
+    const [signedUrl] = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + 5 * 60 * 1000,
+      responseType: "application/pdf",
+      responseDisposition: 'attachment; filename="LinkBase-profile.pdf"',
+    });
+    return res.redirect(302, signedUrl);
+  } catch (error) {
+    console.error("Profile PDF download signing failed:", error.message);
+    return res.status(503).json({ message: "PDF download is temporarily unavailable" });
+  }
 }

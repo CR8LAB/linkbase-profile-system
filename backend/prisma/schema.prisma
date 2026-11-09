@@ -52,6 +52,7 @@ model Profile {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   socialLinks SocialLink[]
+  visits      ProfileVisit[]
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
@@ -59,6 +60,15 @@ model Profile {
   claimTokens ProfileClaimToken[]
 
   @@unique([userId])
+}
+
+model ProfileVisit {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([profileId, createdAt])
 }
 
 model SocialLink {

@@ -1,16 +1,20 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import PublicProfileCard from "./PublicProfileCard.jsx";
+import { shouldRecordLocationVisit } from "../utils/locationVisitGuard.js";
 
 function PublicProfile() {
   const { publicId } = useParams();
+  const location = useLocation();
+  const lastTrackedLocation = useRef(null);
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
     async function fetchProfile() {
       try {
         const response = await fetch(
@@ -19,20 +23,31 @@ function PublicProfile() {
 
         const data = await response.json();
 
+        if (!active) return;
+
         if (!response.ok) {
           throw new Error(data.message || "Profile not found");
         }
 
         setProfile(data.profile);
+        if (shouldRecordLocationVisit(lastTrackedLocation.current, location.key)) {
+          lastTrackedLocation.current = location.key;
+          fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}/visits`, {
+            method: "POST",
+          }).catch(() => {});
+        }
       } catch (error) {
-        setError(error.message);
+        if (active) setError(error.message);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     fetchProfile();
-  }, [publicId]);
+    return () => {
+      active = false;
+    };
+  }, [publicId, location.key]);
 
   if (loading) return <p>Loading profile...</p>;
 

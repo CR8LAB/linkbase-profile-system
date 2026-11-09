@@ -9,6 +9,11 @@ function ProfileCustomizationFields({
   uploadingImage,
   imageError,
   imageSuccess,
+  onPdfSelect,
+  onPdfRemove,
+  pdfBusy,
+  pdfError,
+  pdfSuccess,
 }) {
   return (
     <div className="profile-editor-layout">
@@ -95,6 +100,34 @@ function ProfileCustomizationFields({
         {uploadingImage && <p role="status">Uploading {uploadingImage}...</p>}
         {imageError && <p className="error-message">{imageError}</p>}
         {imageSuccess && <p className="success-message">{imageSuccess}</p>}
+
+        <h3>Profile PDF</h3>
+        {profile.pdfUrl && (
+          <p>
+            Current document: <a href={profile.pdfUrl} target="_blank" rel="noreferrer">View PDF</a>
+          </p>
+        )}
+        <div className="profile-image-controls">
+          <div>
+            <label htmlFor="profile-pdf-file">{profile.pdfUrl ? "Replace PDF" : "Upload PDF"}</label>
+            <input
+              id="profile-pdf-file"
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={onPdfSelect}
+              disabled={Boolean(pdfBusy)}
+            />
+          </div>
+          {profile.pdfUrl && (
+            <button type="button" className="cancel-button" onClick={onPdfRemove} disabled={Boolean(pdfBusy)}>
+              Remove PDF
+            </button>
+          )}
+        </div>
+        <p className="profile-upload-note">PDF. Maximum 5 MB.</p>
+        {pdfBusy && <p role="status">{pdfBusy}</p>}
+        {pdfError && <p className="error-message">{pdfError}</p>}
+        {pdfSuccess && <p className="success-message">{pdfSuccess}</p>}
 
         <h3>Appearance</h3>
         <div className="profile-color-grid">

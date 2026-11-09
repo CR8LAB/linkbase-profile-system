@@ -17,6 +17,9 @@ function EditMyProfile() {
   const [success, setSuccess] = useState("");
   const [imageError, setImageError] = useState("");
   const [imageSuccess, setImageSuccess] = useState("");
+  const [pdfBusy, setPdfBusy] = useState("");
+  const [pdfError, setPdfError] = useState("");
+  const [pdfSuccess, setPdfSuccess] = useState("");
 
   useEffect(() => {
     async function fetchProfile() {
@@ -122,6 +125,62 @@ function EditMyProfile() {
     }
   }
 
+  async function handlePdfSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file || !profile) return;
+    setPdfError("");
+    setPdfSuccess("");
+    if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) {
+      setPdfError("Please select a PDF file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPdfError("PDF must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+    const formData = new FormData();
+    formData.append("pdf", file);
+    try {
+      setPdfBusy("Uploading PDF...");
+      const response = await fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(profile.publicId)}/pdf`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "PDF upload failed");
+      setProfile((previous) => ({ ...previous, pdfUrl: data.profile.pdfUrl }));
+      setPdfSuccess("PDF uploaded successfully.");
+    } catch (uploadError) {
+      setPdfError(uploadError.message);
+    } finally {
+      setPdfBusy("");
+      event.target.value = "";
+    }
+  }
+
+  async function handlePdfRemove() {
+    setPdfError("");
+    setPdfSuccess("");
+    try {
+      setPdfBusy("Removing PDF...");
+      const response = await fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(profile.publicId)}/pdf`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "PDF removal failed");
+      setProfile((previous) => ({ ...previous, pdfUrl: null }));
+      setPdfSuccess("PDF removed successfully.");
+    } catch (removeError) {
+      setPdfError(removeError.message);
+    } finally {
+      setPdfBusy("");
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -222,6 +281,11 @@ function EditMyProfile() {
             uploadingImage={uploadingImage}
             imageError={imageError}
             imageSuccess={imageSuccess}
+            onPdfSelect={handlePdfSelect}
+            onPdfRemove={handlePdfRemove}
+            pdfBusy={pdfBusy}
+            pdfError={pdfError}
+            pdfSuccess={pdfSuccess}
           />
 
           <div className="edit-form-actions">

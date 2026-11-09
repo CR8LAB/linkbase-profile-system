@@ -1,5 +1,6 @@
 import ProfileQRCode from "../components/ProfileQRCode.jsx";
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
 import { buildVCard } from "../utils/vCard.js";
 import {
   FaFacebookF,
@@ -13,6 +14,7 @@ import {
   FaPhone,
   FaGlobe,
   FaAddressCard,
+  FaFilePdf,
 } from "react-icons/fa";
 
 const socialIcons = {
@@ -122,6 +124,17 @@ function PublicProfileCard({ profile, preview = false }) {
           >
             <FaGlobe aria-hidden="true" />
             Visit Website
+          </a>
+        )}
+
+        {!preview && profile.pdfUrl && (
+          <a
+            href={`${API_BASE_URL}${profile.pdfUrl}`}
+            className="public-profile-button"
+            style={buttonStyle}
+          >
+            <FaFilePdf aria-hidden="true" />
+            Download PDF
           </a>
         )}
 

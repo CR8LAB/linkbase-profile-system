@@ -9,11 +9,19 @@ import {
   getMyProfile,
   uploadMyPhoto,
   uploadProfileLogo,
+  uploadProfilePdf,
+  removeProfilePdf,
+  redirectProfilePdf,
 } from "../controllers/profileController.js";
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
 
 import upload from "../middleware/uploadMiddleware.js";
+import uploadPdf from "../middleware/pdfUploadMiddleware.js";
+import {
+  getProfileVisitStatistics,
+  recordPublicProfileVisit,
+} from "../controllers/profileVisitController.js";
 
 const router = Router();
 
@@ -28,6 +36,12 @@ router.patch("/:publicId", authenticate, updateProfile);
 // CUSTOMER - MUST BE BEFORE PUBLIC PROFILE ROUTE
 router.get("/my-profile", authenticate, getMyProfile);
 
+router.post("/:publicId/visits", recordPublicProfileVisit);
+router.get("/:publicId/statistics", authenticate, getProfileVisitStatistics);
+
+// Public download redirects to a short-lived signed URL.
+router.get("/:publicId/pdf/download", redirectProfilePdf);
+
 // PUBLIC
 router.get("/:publicId", getProfile);
 
@@ -40,6 +54,15 @@ router.post(
   upload.single("photo"),
   uploadMyPhoto,
 );
+
+router.post(
+  "/:publicId/pdf",
+  authenticate,
+  uploadPdf,
+  uploadProfilePdf,
+);
+
+router.delete("/:publicId/pdf", authenticate, removeProfilePdf);
 
 router.post(
   "/:publicId/logo",

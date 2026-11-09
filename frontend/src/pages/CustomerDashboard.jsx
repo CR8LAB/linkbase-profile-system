@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import WorkspaceNavigation from "../components/WorkspaceNavigation.jsx";
+import ProfileVisitStatistics from "../components/ProfileVisitStatistics.jsx";
 import { API_BASE_URL } from "../apiBase.js";
 
 function CustomerDashboard() {
@@ -191,6 +192,8 @@ function CustomerDashboard() {
             </div>
           </div>
         </section>
+
+        <ProfileVisitStatistics publicId={profile.publicId} />
 
         <footer className="customer-footer">
           © {new Date().getFullYear()} LinkBase. All rights reserved.

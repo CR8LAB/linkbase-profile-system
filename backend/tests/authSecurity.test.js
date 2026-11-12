@@ -10,7 +10,14 @@ import {
   normalizeEmail,
 } from "../src/services/authSecurity.js";
 import { createAuthRateLimit } from "../src/middleware/authRateLimit.js";
+import { getTrustProxySetting } from "../src/config/trustProxy.js";
 import { buildActionUrl } from "../src/services/emailService.js";
+
+test("trust proxy uses one production hop and stays disabled in local development", () => {
+  assert.equal(getTrustProxySetting({ NODE_ENV: "production" }), 1);
+  assert.equal(getTrustProxySetting({ NODE_ENV: "development" }), false);
+  assert.equal(getTrustProxySetting({}), false);
+});
 
 test("email validation and normalization are consistent", () => {
   assert.equal(isValidEmail("user@example.com"), true);

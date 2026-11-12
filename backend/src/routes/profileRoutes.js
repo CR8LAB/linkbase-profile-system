@@ -12,7 +12,6 @@ import {
   uploadProfilePdf,
   removeProfilePdf,
   redirectProfilePdf,
-  updateProfilePdfDisplayName,
 } from "../controllers/profileController.js";
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
@@ -61,12 +60,6 @@ router.post(
   authenticate,
   uploadPdf,
   uploadProfilePdf,
-);
-
-router.patch(
-  "/:publicId/pdf/display-name",
-  authenticate,
-  updateProfilePdfDisplayName,
 );
 
 router.delete("/:publicId/pdf", authenticate, removeProfilePdf);

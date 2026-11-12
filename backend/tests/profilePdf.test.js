@@ -2,17 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canCustomizeProfile } from "../src/services/profileValidation.js";
 import {
-  createPdfDisplayNameUpdateHandler,
-  createPdfDownloadHandler,
   createProfilePdfObjectName,
-  getPdfContentDisposition,
   getProfilePdfObjectName,
   getProfilePhotoObjectName,
-  getUploadPdfDisplayName,
   removeProfileMedia,
   removeStoredProfilePdf,
   uploadAndReplaceProfilePdf,
-  validatePdfDisplayName,
   validatePdfFile,
 } from "../src/services/profilePdf.js";
 
@@ -30,143 +25,6 @@ test("PDF validation requires PDF MIME type, extension, signature and size", () 
   assert.match(validatePdfFile({ ...validPdf, buffer: Buffer.from("not pdf") }), /signature/);
   assert.match(validatePdfFile({ ...validPdf, size: 5 * 1024 * 1024 + 1 }), /5 MB/);
   assert.match(validatePdfFile(null), /select/);
-});
-
-test("PDF display names require a safe filename and preserve the PDF extension", () => {
-  assert.deepEqual(validatePdfDisplayName("  Client Guide.PDF  "), {
-    value: "Client Guide.pdf",
-  });
-  assert.equal(validatePdfDisplayName("../private.pdf").error.includes("unsafe"), true);
-  assert.equal(validatePdfDisplayName("report").error.includes(".pdf"), true);
-  assert.ok(validatePdfDisplayName("..").error);
-  assert.ok(validatePdfDisplayName("CON.pdf").error);
-  assert.equal(getUploadPdfDisplayName("client-guide.PDF"), "client-guide.pdf");
-  assert.equal(getUploadPdfDisplayName("../../invalid?.pdf"), "LinkBase-profile.pdf");
-  assert.equal(
-    getPdfContentDisposition("Rapport été.pdf"),
-    'attachment; filename="Rapport _t_.pdf"; filename*=UTF-8\'\'Rapport%20%C3%A9t%C3%A9.pdf',
-  );
-});
-
-function createResponse() {
-  return {
-    statusCode: 200,
-    body: null,
-    redirectCode: null,
-    redirectUrl: null,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json(body) {
-      this.body = body;
-      return this;
-    },
-    redirect(code, url) {
-      this.redirectCode = code;
-      this.redirectUrl = url;
-      return this;
-    },
-  };
-}
-
-test("PDF name updates authorize admins and assigned customers without touching storage", async () => {
-  const changes = [];
-  const storedProfile = {
-    userId: "customer-1",
-    pdfUrl: "/api/profiles/LB001/pdf/download",
-    pdfDisplayName: "Old name.pdf",
-  };
-  const handler = createPdfDisplayNameUpdateHandler({
-    async findProfile() {
-      return storedProfile;
-    },
-    async updateProfile(publicId, pdfDisplayName) {
-      changes.push({ publicId, pdfDisplayName });
-      storedProfile.pdfDisplayName = pdfDisplayName;
-      return { publicId, pdfDisplayName };
-    },
-    canCustomize: canCustomizeProfile,
-  });
-
-  for (const user of [
-    { id: "admin-1", role: "ADMIN" },
-    { id: "customer-1", role: "CUSTOMER" },
-  ]) {
-    const response = createResponse();
-    await handler(
-      { params: { publicId: "LB001" }, body: { pdfDisplayName: "New name.pdf" }, user },
-      response,
-    );
-    assert.equal(response.statusCode, 200);
-  }
-  assert.deepEqual(changes, [
-    { publicId: "LB001", pdfDisplayName: "New name.pdf" },
-    { publicId: "LB001", pdfDisplayName: "New name.pdf" },
-  ]);
-  assert.equal(storedProfile.pdfUrl, "/api/profiles/LB001/pdf/download");
-  assert.equal(storedProfile.pdfDisplayName, "New name.pdf");
-
-  const forbiddenResponse = createResponse();
-  await handler(
-    {
-      params: { publicId: "LB001" },
-      body: { pdfDisplayName: "Unsafe/Name.pdf" },
-      user: { id: "customer-2", role: "CUSTOMER" },
-    },
-    forbiddenResponse,
-  );
-  assert.equal(forbiddenResponse.statusCode, 400);
-
-  const deniedResponse = createResponse();
-  await handler(
-    {
-      params: { publicId: "LB001" },
-      body: { pdfDisplayName: "New name.pdf" },
-      user: { id: "customer-2", role: "CUSTOMER" },
-    },
-    deniedResponse,
-  );
-  assert.equal(deniedResponse.statusCode, 403);
-  assert.equal(changes.length, 2);
-});
-
-test("public PDF downloads sign the configured filename without exposing the storage URL in JSON", async () => {
-  let signedOptions;
-  const handler = createPdfDownloadHandler({
-    async findProfile() {
-      return {
-        id: "profile-1",
-        pdfUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf",
-        pdfDisplayName: "Client Guide.pdf",
-      };
-    },
-    bucket: {
-      name: "linkbase-bucket",
-      file(objectName) {
-        assert.equal(objectName, "profiles/profile-1/pdf/a1b2-c3d4.pdf");
-        return {
-          async exists() { return [true]; },
-          async getSignedUrl(options) {
-            signedOptions = options;
-            return ["https://signed.example/file?token=temporary"];
-          },
-        };
-      },
-    },
-  });
-  const response = createResponse();
-  await handler({ params: { publicId: "LB001" } }, response);
-
-  assert.equal(response.redirectCode, 302);
-  assert.equal(response.redirectUrl, "https://signed.example/file?token=temporary");
-  assert.equal(
-    signedOptions.responseDisposition,
-    'attachment; filename="Client Guide.pdf"; filename*=UTF-8\'\'Client%20Guide.pdf',
-  );
-  assert.equal(signedOptions.action, "read");
-  assert.equal(signedOptions.responseType, "application/pdf");
-  assert.equal(response.body, null);
 });
 
 test("PDF object keys are unique and constrained to their configured bucket and profile", () => {
@@ -277,14 +135,12 @@ test("replacement stores the new PDF before persisting it and deleting the old o
     publicId: "LB001",
     buffer: validPdf.buffer,
     previousPdfUrl: oldUrl,
-    pdfDisplayName: "replacement.pdf",
-    async persist(pdfUrl, pdfDisplayName) {
+    async persist(pdfUrl) {
       events.push("persist");
-      return { publicId: "LB001", pdfUrl, pdfDisplayName };
+      return { publicId: "LB001", pdfUrl };
     },
   });
   assert.match(result.pdfUrl, /\/api\/profiles\/LB001\/pdf\/download$/);
-  assert.equal(result.pdfDisplayName, "replacement.pdf");
   assert.match(events[0], /^save:/);
   assert.equal(events[1], "persist");
   assert.equal(events[2], "delete:profiles/profile-1/pdf/a1b2-c3d4.pdf");
@@ -292,10 +148,6 @@ test("replacement stores the new PDF before persisting it and deleting the old o
 
 test("removal clears the profile URL before deleting only a same-bucket profile PDF", async () => {
   const events = [];
-  const profile = {
-    pdfUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf",
-    pdfDisplayName: "Client Guide.pdf",
-  };
   const bucket = {
     name: "linkbase-bucket",
     file(name) { return { async delete() { events.push(`delete:${name}`); } }; },
@@ -305,15 +157,10 @@ test("removal clears the profile URL before deleting only a same-bucket profile 
     bucket,
     profileId: "profile-1",
     previousPdfUrl: oldUrl,
-    async clear() {
-      profile.pdfUrl = null;
-      profile.pdfDisplayName = null;
-      events.push("clear");
-    },
+    async clear() { events.push("clear"); },
     async restore() { events.push("restore"); },
   });
   assert.deepEqual(events, ["clear", "delete:profiles/profile-1/pdf/a1b2-c3d4.pdf"]);
-  assert.deepEqual(profile, { pdfUrl: null, pdfDisplayName: null });
 
   events.length = 0;
   await removeStoredProfilePdf({

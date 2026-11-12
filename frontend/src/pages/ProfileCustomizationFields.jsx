@@ -11,7 +11,6 @@ function ProfileCustomizationFields({
   imageSuccess,
   onPdfSelect,
   onPdfRemove,
-  onPdfDisplayNameSave,
   pdfBusy,
   pdfError,
   pdfSuccess,
@@ -125,29 +124,6 @@ function ProfileCustomizationFields({
             </button>
           )}
         </div>
-        {profile.pdfUrl && (
-          <>
-            <div className="edit-form-group">
-              <label htmlFor="pdfDisplayName">PDF display name</label>
-              <input
-                id="pdfDisplayName"
-                name="pdfDisplayName"
-                value={profile.pdfDisplayName || "LinkBase-profile.pdf"}
-                onChange={onChange}
-                maxLength={120}
-                disabled={Boolean(pdfBusy)}
-              />
-            </div>
-            <button
-              type="button"
-              className="cancel-button"
-              onClick={onPdfDisplayNameSave}
-              disabled={Boolean(pdfBusy)}
-            >
-              Save PDF Name
-            </button>
-          </>
-        )}
         <p className="profile-upload-note">PDF. Maximum 5 MB.</p>
         {pdfBusy && <p role="status">{pdfBusy}</p>}
         {pdfError && <p className="error-message">{pdfError}</p>}

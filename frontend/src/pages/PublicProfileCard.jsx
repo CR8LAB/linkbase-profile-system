@@ -134,7 +134,7 @@ function PublicProfileCard({ profile, preview = false }) {
             style={buttonStyle}
           >
             <FaFilePdf aria-hidden="true" />
-            {profile.pdfDisplayName || "Download PDF"}
+            Download PDF
           </a>
         )}
 

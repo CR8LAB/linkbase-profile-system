@@ -8,39 +8,12 @@ import {
 } from "../services/profileValidation.js";
 import { generateShortCode } from "../services/shortCode.js";
 import {
-  createPdfDisplayNameUpdateHandler,
-  createPdfDownloadHandler,
-  DEFAULT_PDF_DISPLAY_NAME,
-  getUploadPdfDisplayName,
   getPdfDownloadUrl,
+  getProfilePdfObjectName,
   removeStoredProfilePdf,
   uploadAndReplaceProfilePdf,
   validatePdfFile,
 } from "../services/profilePdf.js";
-
-export const updateProfilePdfDisplayName = createPdfDisplayNameUpdateHandler({
-  findProfile: (publicId) =>
-    prisma.profile.findUnique({
-      where: { publicId },
-      select: { userId: true, pdfUrl: true },
-    }),
-  updateProfile: (publicId, pdfDisplayName) =>
-    prisma.profile.update({
-      where: { publicId },
-      data: { pdfDisplayName },
-      select: { publicId: true, pdfDisplayName: true },
-    }),
-  canCustomize: canCustomizeProfile,
-});
-
-export const redirectProfilePdf = createPdfDownloadHandler({
-  findProfile: (publicId) =>
-    prisma.profile.findUnique({
-      where: { publicId },
-      select: { id: true, pdfUrl: true, pdfDisplayName: true },
-    }),
-  bucket,
-});
 
 export async function createProfile(req, res) {
   try {
@@ -120,6 +93,7 @@ export async function createProfile(req, res) {
     });
   }
 }
+
 // updating the profile
 
 export async function updateProfile(req, res) {
@@ -187,7 +161,6 @@ export async function updateProfile(req, res) {
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
         pdfUrl: true,
-        pdfDisplayName: true,
         companyId: true,
       },
     });
@@ -197,9 +170,6 @@ export async function updateProfile(req, res) {
       profile: {
         ...profile,
         pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(publicId) : null,
-        pdfDisplayName: profile.pdfUrl
-          ? profile.pdfDisplayName || DEFAULT_PDF_DISPLAY_NAME
-          : null,
       },
     });
   } catch (error) {
@@ -239,7 +209,6 @@ export async function getProfile(req, res) {
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
         pdfUrl: true,
-        pdfDisplayName: true,
         socialLinks: {
           select: {
             id: true,
@@ -265,9 +234,6 @@ export async function getProfile(req, res) {
       profile: {
         ...profile,
         pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(publicId) : null,
-        pdfDisplayName: profile.pdfUrl
-          ? profile.pdfDisplayName || DEFAULT_PDF_DISPLAY_NAME
-          : null,
       },
     });
   } catch (error) {
@@ -308,7 +274,6 @@ export async function getMyProfile(req, res) {
         socialLinkBackgroundColor: true,
         socialLinkIconColor: true,
         pdfUrl: true,
-        pdfDisplayName: true,
         socialLinks: {
           select: {
             id: true,
@@ -332,9 +297,6 @@ export async function getMyProfile(req, res) {
       profile: {
         ...profile,
         pdfUrl: profile.pdfUrl ? getPdfDownloadUrl(profile.publicId) : null,
-        pdfDisplayName: profile.pdfUrl
-          ? profile.pdfDisplayName || DEFAULT_PDF_DISPLAY_NAME
-          : null,
       },
     });
   } catch (error) {
@@ -576,12 +538,11 @@ export async function uploadProfilePdf(req, res) {
       publicId,
       buffer: req.file.buffer,
       previousPdfUrl: profile.pdfUrl,
-      pdfDisplayName: getUploadPdfDisplayName(req.file.originalname),
-      persist: (pdfUrl, pdfDisplayName) =>
+      persist: (pdfUrl) =>
         prisma.profile.update({
           where: { publicId },
-          data: { pdfUrl, pdfDisplayName },
-          select: { publicId: true, pdfUrl: true, pdfDisplayName: true },
+          data: { pdfUrl },
+          select: { publicId: true, pdfUrl: true },
         }),
     });
 
@@ -605,36 +566,47 @@ export async function removeProfilePdf(req, res) {
       return res.status(403).json({ message: "You cannot edit this profile" });
     }
     if (!profile.pdfUrl) {
-      return res.status(200).json({
-        success: true,
-        profile: { publicId, pdfUrl: null, pdfDisplayName: null },
-      });
+      return res.status(200).json({ success: true, profile: { publicId, pdfUrl: null } });
     }
 
     await removeStoredProfilePdf({
       bucket,
       profileId: profile.id,
       previousPdfUrl: profile.pdfUrl,
-      clear: () =>
-        prisma.profile.update({
-          where: { publicId },
-          data: { pdfUrl: null, pdfDisplayName: null },
-        }),
-      restore: () =>
-        prisma.profile.update({
-          where: { publicId },
-          data: {
-            pdfUrl: profile.pdfUrl,
-            pdfDisplayName: profile.pdfDisplayName,
-          },
-        }),
+      clear: () => prisma.profile.update({ where: { publicId }, data: { pdfUrl: null } }),
+      restore: () => prisma.profile.update({ where: { publicId }, data: { pdfUrl: profile.pdfUrl } }),
     });
-    return res.status(200).json({
-      success: true,
-      profile: { publicId, pdfUrl: null, pdfDisplayName: null },
-    });
+    return res.status(200).json({ success: true, profile: { publicId, pdfUrl: null } });
   } catch (error) {
     console.error("Profile PDF removal error:", error);
     return res.status(500).json({ message: "Failed to remove PDF" });
+  }
+}
+
+export async function redirectProfilePdf(req, res) {
+  const { publicId } = req.params;
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { publicId },
+      select: { id: true, pdfUrl: true },
+    });
+    if (!profile?.pdfUrl) return res.status(404).json({ message: "PDF not found" });
+    const objectName = getProfilePdfObjectName(profile.pdfUrl, bucket.name, profile.id);
+    if (!objectName) return res.status(404).json({ message: "PDF not found" });
+
+    const file = bucket.file(objectName);
+    const [exists] = await file.exists();
+    if (!exists) return res.status(404).json({ message: "PDF not found" });
+    const [signedUrl] = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + 5 * 60 * 1000,
+      responseType: "application/pdf",
+      responseDisposition: 'attachment; filename="LinkBase-profile.pdf"',
+    });
+    return res.redirect(302, signedUrl);
+  } catch (error) {
+    console.error("Profile PDF download signing failed:", error.message);
+    return res.status(503).json({ message: "PDF download is temporarily unavailable" });
   }
 }

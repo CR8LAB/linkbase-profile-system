@@ -151,49 +151,13 @@ function EditMyProfile() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "PDF upload failed");
-      setProfile((previous) => ({
-        ...previous,
-        pdfUrl: data.profile.pdfUrl,
-        pdfDisplayName: data.profile.pdfDisplayName,
-      }));
+      setProfile((previous) => ({ ...previous, pdfUrl: data.profile.pdfUrl }));
       setPdfSuccess("PDF uploaded successfully.");
     } catch (uploadError) {
       setPdfError(uploadError.message);
     } finally {
       setPdfBusy("");
       event.target.value = "";
-    }
-  }
-
-  async function handlePdfDisplayNameSave() {
-    setPdfError("");
-    setPdfSuccess("");
-    try {
-      setPdfBusy("Saving PDF name...");
-      const response = await fetch(
-        `${API_BASE_URL}/api/profiles/${encodeURIComponent(profile.publicId)}/pdf/display-name`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ pdfDisplayName: profile.pdfDisplayName }),
-        },
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "PDF name update failed");
-      }
-      setProfile((previous) => ({
-        ...previous,
-        pdfDisplayName: data.profile.pdfDisplayName,
-      }));
-      setPdfSuccess("PDF name saved successfully.");
-    } catch (saveError) {
-      setPdfError(saveError.message);
-    } finally {
-      setPdfBusy("");
     }
   }
 
@@ -208,11 +172,7 @@ function EditMyProfile() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "PDF removal failed");
-      setProfile((previous) => ({
-        ...previous,
-        pdfUrl: null,
-        pdfDisplayName: null,
-      }));
+      setProfile((previous) => ({ ...previous, pdfUrl: null }));
       setPdfSuccess("PDF removed successfully.");
     } catch (removeError) {
       setPdfError(removeError.message);
@@ -323,7 +283,6 @@ function EditMyProfile() {
             imageSuccess={imageSuccess}
             onPdfSelect={handlePdfSelect}
             onPdfRemove={handlePdfRemove}
-            onPdfDisplayNameSave={handlePdfDisplayNameSave}
             pdfBusy={pdfBusy}
             pdfError={pdfError}
             pdfSuccess={pdfSuccess}

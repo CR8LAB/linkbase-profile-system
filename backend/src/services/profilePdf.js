@@ -2,118 +2,6 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 export const MAX_PDF_SIZE_BYTES = 5 * 1024 * 1024;
-export const DEFAULT_PDF_DISPLAY_NAME = "LinkBase-profile.pdf";
-
-export function validatePdfDisplayName(value) {
-  if (typeof value !== "string") {
-    return { error: "PDF display name must be text" };
-  }
-
-  const displayName = value.trim();
-  if (!displayName || displayName.length > 120) {
-    return { error: "PDF display name must be between 1 and 120 characters" };
-  }
-  if (/[/\\<>:"|?*\u0000-\u001f\u007f]/u.test(displayName)) {
-    return { error: "PDF display name contains unsafe characters" };
-  }
-  if (!/\.pdf$/i.test(displayName)) {
-    return { error: "PDF display name must end in .pdf" };
-  }
-
-  const baseName = displayName.slice(0, -4);
-  if (
-    !baseName ||
-    baseName.includes("..") ||
-    /[. ]$/.test(baseName) ||
-    /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(baseName)
-  ) {
-    return { error: "PDF display name is not a valid filename" };
-  }
-
-  return { value: `${baseName}.pdf` };
-}
-
-export function getUploadPdfDisplayName(originalName) {
-  const baseName = String(originalName || "")
-    .replace(/\\/g, "/")
-    .split("/")
-    .pop();
-  const result = validatePdfDisplayName(baseName);
-  return result.value || DEFAULT_PDF_DISPLAY_NAME;
-}
-
-export function getPdfContentDisposition(displayName) {
-  const result = validatePdfDisplayName(displayName);
-  const filename = result.value || DEFAULT_PDF_DISPLAY_NAME;
-  const asciiFilename = filename.replace(/[^\x20-\x7e]/g, "_");
-  const encodedFilename = encodeURIComponent(filename).replace(
-    /['()*]/g,
-    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-
-  return `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`;
-}
-
-export function createPdfDisplayNameUpdateHandler({
-  findProfile,
-  updateProfile,
-  canCustomize,
-}) {
-  return async function updatePdfDisplayName(req, res) {
-    const result = validatePdfDisplayName(req.body?.pdfDisplayName);
-    if (result.error) return res.status(400).json({ message: result.error });
-
-    try {
-      const profile = await findProfile(req.params.publicId);
-      if (!profile) return res.status(404).json({ message: "Profile not found" });
-      if (!canCustomize(req.user, profile)) {
-        return res.status(403).json({ message: "You cannot edit this profile" });
-      }
-      if (!profile.pdfUrl) {
-        return res.status(409).json({ message: "Upload a PDF before naming it" });
-      }
-
-      const updated = await updateProfile(req.params.publicId, result.value);
-      return res.status(200).json({ success: true, profile: updated });
-    } catch (error) {
-      console.error("Profile PDF display name update failed:", error);
-      return res.status(500).json({ message: "Failed to update PDF display name" });
-    }
-  };
-}
-
-export function createPdfDownloadHandler({ findProfile, bucket }) {
-  return async function redirectProfilePdf(req, res) {
-    try {
-      const profile = await findProfile(req.params.publicId);
-      if (!profile?.pdfUrl) return res.status(404).json({ message: "PDF not found" });
-
-      const objectName = getProfilePdfObjectName(
-        profile.pdfUrl,
-        bucket.name,
-        profile.id,
-      );
-      if (!objectName) return res.status(404).json({ message: "PDF not found" });
-
-      const file = bucket.file(objectName);
-      const [exists] = await file.exists();
-      if (!exists) return res.status(404).json({ message: "PDF not found" });
-      const [signedUrl] = await file.getSignedUrl({
-        version: "v4",
-        action: "read",
-        expires: Date.now() + 5 * 60 * 1000,
-        responseType: "application/pdf",
-        responseDisposition: getPdfContentDisposition(
-          profile.pdfDisplayName || DEFAULT_PDF_DISPLAY_NAME,
-        ),
-      });
-      return res.redirect(302, signedUrl);
-    } catch (error) {
-      console.error("Profile PDF download signing failed:", error.message);
-      return res.status(503).json({ message: "PDF download is temporarily unavailable" });
-    }
-  };
-}
 
 export function validatePdfFile(file) {
   if (!file) return "Please select a PDF";
@@ -208,7 +96,6 @@ export async function uploadAndReplaceProfilePdf({
   publicId,
   buffer,
   previousPdfUrl,
-  pdfDisplayName,
   persist,
 }) {
   const objectName = createProfilePdfObjectName(profileId);
@@ -221,7 +108,7 @@ export async function uploadAndReplaceProfilePdf({
   const storedUrl = `https://storage.googleapis.com/${bucket.name}/${objectName}`;
   let persisted;
   try {
-    persisted = await persist(storedUrl, pdfDisplayName);
+    persisted = await persist(storedUrl);
   } catch (error) {
     await object.delete().catch(() => {});
     throw error;
@@ -233,11 +120,7 @@ export async function uploadAndReplaceProfilePdf({
       console.error("Could not remove replaced profile PDF object:", error.message);
     });
   }
-  return {
-    ...persisted,
-    pdfUrl: getPdfDownloadUrl(publicId),
-    pdfDisplayName,
-  };
+  return { ...persisted, pdfUrl: getPdfDownloadUrl(publicId) };
 }
 
 export async function removeStoredProfilePdf({

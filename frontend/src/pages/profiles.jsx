@@ -14,6 +14,8 @@ function Profiles() {
   const [inviteEmails, setInviteEmails] = useState({});
   const [invitingProfileId, setInvitingProfileId] = useState("");
   const [inviteFeedback, setInviteFeedback] = useState({});
+  const [deletingProfileId, setDeletingProfileId] = useState("");
+  const [deleteFeedback, setDeleteFeedback] = useState("");
   const navigate = useNavigate();
 
   // Load companies when the page opens
@@ -126,6 +128,49 @@ function Profiles() {
     }
   }
 
+  async function deleteProfile(profile) {
+    const assignedWarning = profile.user
+      ? "\n\nThis profile is assigned to a customer. Deleting it will remove their public profile, but their login account will remain active."
+      : "";
+    const confirmed = window.confirm(
+      `Delete ${profile.fullName} (${profile.publicId})?${assignedWarning}`,
+    );
+    if (!confirmed) return;
+
+    setDeletingProfileId(profile.publicId);
+    setError("");
+    setDeleteFeedback("");
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/profiles/${encodeURIComponent(profile.publicId)}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Could not delete profile");
+      }
+
+      const refreshResponse = await fetch(
+        `${API_BASE_URL}/api/companies/${encodeURIComponent(selectedCompany)}/profiles`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const refreshedData = await refreshResponse.json();
+      if (!refreshResponse.ok) {
+        setDeleteFeedback("Profile deleted, but the list could not be refreshed.");
+        throw new Error(refreshedData.message || "Failed to refresh profiles");
+      }
+
+      setProfiles(refreshedData.profiles);
+      setDeleteFeedback(`${profile.fullName} (${profile.publicId}) was deleted.`);
+    } catch (deleteError) {
+      setError(deleteError.message);
+    } finally {
+      setDeletingProfileId("");
+    }
+  }
+
   return (
     <AdminPageLayout>
       <header className="admin-header">
@@ -166,6 +211,7 @@ function Profiles() {
       </div>
 
       {error && <p className="error-message">{error}</p>}
+      {deleteFeedback && <p role="status">{deleteFeedback}</p>}
 
       {loadingProfiles && <p>Loading profiles...</p>}
 
@@ -252,6 +298,16 @@ function Profiles() {
                     )}
                   </form>
                 )}
+
+                <button
+                  className="profile-edit-button"
+                  disabled={Boolean(deletingProfileId)}
+                  onClick={() => deleteProfile(profile)}
+                >
+                  {deletingProfileId === profile.publicId
+                    ? "Deleting..."
+                    : "Delete Profile"}
+                </button>
 
                 <button
                   className="profile-edit-button"

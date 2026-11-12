@@ -1,4 +1,6 @@
 import prisma from "../config/prisma.js";
+import { bucket } from "../config/storage.js";
+import { removeProfileMedia } from "../services/profilePdf.js";
 
 export async function getAdminSummary(req, res) {
   try {
@@ -58,5 +60,35 @@ export async function getAdminProfiles(req, res) {
   } catch (error) {
     console.error("Admin profile list failed:", error);
     return res.status(500).json({ message: "Failed to load profiles" });
+  }
+}
+
+export async function deleteAdminProfile(req, res) {
+  const { publicId } = req.params;
+
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { publicId },
+      select: { id: true, publicId: true, photoUrl: true, pdfUrl: true },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    // Remove only media URLs that match this profile's generated GCS object paths.
+    // If storage cleanup fails, retain the database row and report the failure.
+    await removeProfileMedia({ bucket, profile });
+    await prisma.profile.delete({ where: { id: profile.id } });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile deleted successfully",
+    });
+  } catch (error) {
+    console.error("Admin profile deletion failed:", error);
+    return res.status(500).json({
+      message: "Could not fully delete the profile. Please retry or contact support.",
+    });
   }
 }

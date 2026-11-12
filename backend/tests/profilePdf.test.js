@@ -4,6 +4,8 @@ import { canCustomizeProfile } from "../src/services/profileValidation.js";
 import {
   createProfilePdfObjectName,
   getProfilePdfObjectName,
+  getProfilePhotoObjectName,
+  removeProfileMedia,
   removeStoredProfilePdf,
   uploadAndReplaceProfilePdf,
   validatePdfFile,
@@ -37,6 +39,74 @@ test("PDF object keys are unique and constrained to their configured bucket and 
   assert.equal(
     getProfilePdfObjectName("https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/photo.png", "linkbase-bucket", "profile-1"),
     null,
+  );
+});
+
+test("profile media cleanup targets only the profile's generated photo and PDF objects", async () => {
+  const deleted = [];
+  const bucket = {
+    name: "linkbase-bucket",
+    file(name) {
+      return {
+        async delete(options) {
+          deleted.push({ name, options });
+        },
+      };
+    },
+  };
+  const profile = {
+    id: "profile-1",
+    publicId: "LB001",
+    photoUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/LB001/a1b2-c3d4.webp",
+    pdfUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf",
+  };
+
+  assert.equal(
+    getProfilePhotoObjectName(profile.photoUrl, bucket.name, profile.publicId),
+    "profiles/LB001/a1b2-c3d4.webp",
+  );
+  await removeProfileMedia({ bucket, profile });
+  assert.deepEqual(deleted, [
+    { name: "profiles/LB001/a1b2-c3d4.webp", options: { ignoreNotFound: true } },
+    { name: "profiles/profile-1/pdf/a1b2-c3d4.pdf", options: { ignoreNotFound: true } },
+  ]);
+
+  assert.equal(
+    getProfilePhotoObjectName(
+      "https://storage.googleapis.com/linkbase-bucket/profiles/other-profile/a1b2-c3d4.webp",
+      bucket.name,
+      profile.publicId,
+    ),
+    null,
+  );
+  assert.equal(
+    getProfilePhotoObjectName(
+      "https://storage.googleapis.com/other-bucket/profiles/LB001/a1b2-c3d4.webp",
+      bucket.name,
+      profile.publicId,
+    ),
+    null,
+  );
+});
+
+test("profile media cleanup propagates storage failures", async () => {
+  const bucket = {
+    name: "linkbase-bucket",
+    file() {
+      return { async delete() { throw new Error("storage unavailable"); } };
+    },
+  };
+  await assert.rejects(
+    removeProfileMedia({
+      bucket,
+      profile: {
+        id: "profile-1",
+        publicId: "LB001",
+        photoUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/LB001/a1b2-c3d4.webp",
+        pdfUrl: null,
+      },
+    }),
+    /storage unavailable/,
   );
 });
 

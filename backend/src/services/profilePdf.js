@@ -50,6 +50,42 @@ export function getProfilePdfObjectName(pdfUrl, bucketName, profileId) {
   }
 }
 
+export function getProfilePhotoObjectName(photoUrl, bucketName, publicId) {
+  try {
+    const url = new URL(photoUrl);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "storage.googleapis.com" ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    ) return null;
+
+    const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    if (parts.length !== 4 || parts[0] !== bucketName) return null;
+    const objectName = parts.slice(1).join("/");
+    if (!objectName.startsWith(`profiles/${publicId}/`)) return null;
+    const fileName = objectName.slice(`profiles/${publicId}/`.length);
+    if (!/^[0-9a-f-]+\.(jpg|png|webp)$/i.test(fileName)) return null;
+    return objectName;
+  } catch {
+    return null;
+  }
+}
+
+export async function removeProfileMedia({ bucket, profile }) {
+  const objectNames = [
+    getProfilePhotoObjectName(profile.photoUrl, bucket.name, profile.publicId),
+    getProfilePdfObjectName(profile.pdfUrl, bucket.name, profile.id),
+  ].filter(Boolean);
+
+  for (const objectName of objectNames) {
+    await bucket.file(objectName).delete({ ignoreNotFound: true });
+  }
+}
+
 export function getPdfDownloadUrl(publicId) {
   return `/api/profiles/${encodeURIComponent(publicId)}/pdf/download`;
 }

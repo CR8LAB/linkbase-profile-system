@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --test tests/authSecurity.test.js && node --test tests/authController.test.js && node --test tests/profileValidation.test.js && node --test tests/profilePdf.test.js && node --test tests/profileVisitTracking.test.js && node --test tests/shortCode.test.js && node --test tests/shortUrlController.test.js && node --test tests/companyDeletion.test.js",
+    "test": "node --test tests/authSecurity.test.js && node --test tests/authController.test.js && node --test tests/profileValidation.test.js && node --test tests/profilePdf.test.js && node --test tests/profileVisitTracking.test.js && node --test tests/shortCode.test.js && node --test tests/shortUrlController.test.js && node --test tests/companyDeletion.test.js && node --test tests/customerAccountDeletion.test.js",
     "migrate:mvp:status": "node scripts/prismaMvp.js migrate status",
     "migrate:mvp:deploy": "node scripts/prismaMvp.js migrate deploy"
   },

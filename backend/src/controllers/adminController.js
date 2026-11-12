@@ -1,6 +1,11 @@
 import prisma from "../config/prisma.js";
 import { bucket } from "../config/storage.js";
 import { removeProfileMedia } from "../services/profilePdf.js";
+import { createCustomerAccountDeletionHandler } from "../services/customerAccountDeletion.js";
+
+export const deleteAdminCustomer = createCustomerAccountDeletionHandler({
+  transaction: (work) => prisma.$transaction(work),
+});
 
 export async function getAdminSummary(req, res) {
   try {

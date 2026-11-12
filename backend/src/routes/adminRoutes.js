@@ -5,6 +5,7 @@ import {
   getAdminSummary,
   getCustomers,
   deleteAdminProfile,
+  deleteAdminCustomer,
 } from "../controllers/adminController.js";
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 router.use(authenticate, requireAdmin);
 router.get("/summary", getAdminSummary);
 router.get("/customers", getCustomers);
+router.delete("/customers/:userId", deleteAdminCustomer);
 router.get("/profiles", getAdminProfiles);
 router.delete("/profiles/:publicId", deleteAdminProfile);
 

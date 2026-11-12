@@ -135,6 +135,67 @@ function CustomerManagement() {
     }
   }
 
+  async function deleteCustomer(customer) {
+    if (busy) return;
+    const assignedProfiles = customer.profiles
+      .map((profile) => `${profile.fullName} (${profile.publicId})`)
+      .join(", ");
+    const profileWarning = assignedProfiles
+      ? `\n\nAssigned public profile${customer.profiles.length === 1 ? "" : "s"}: ${assignedProfiles}. ${customer.profiles.length === 1 ? "It" : "They"} will remain active and unassigned, with their public assets preserved.`
+      : "\n\nThe login account will be deleted. Any public profile and its assets will remain intact.";
+    if (!window.confirm(`Delete the customer login account for ${customer.email}?${profileWarning}`)) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    let deleted = false;
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/customers/${encodeURIComponent(customer.id)}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Could not delete customer account");
+      }
+      deleted = true;
+
+      setCustomers((previous) => previous.filter((item) => item.id !== customer.id));
+      setProfiles((previous) => previous.map((profile) =>
+        profile.user?.id === customer.id ? { ...profile, user: null } : profile,
+      ));
+
+      const headers = { Authorization: `Bearer ${token}` };
+      const [customerResponse, profileResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/admin/customers`, { headers }),
+        fetch(`${API_BASE_URL}/api/admin/profiles`, { headers }),
+      ]);
+      const [customerData, profileData] = await Promise.all([
+        customerResponse.json(),
+        profileResponse.json(),
+      ]);
+      if (!customerResponse.ok || !profileResponse.ok) {
+        throw new Error("The account was deleted, but the customer list could not be refreshed.");
+      }
+
+      setCustomers(customerData.customers || []);
+      setProfiles(profileData.profiles || []);
+      setSuccess(`The login account for ${customer.email} was deleted. Any public profile remains active and unassigned.`);
+    } catch (deleteError) {
+      if (deleted) {
+        setSuccess("The account was deleted, but the customer list could not be refreshed. The local list has been updated.");
+      } else {
+        setError(deleteError.message);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <AdminPageLayout>
       <header className="admin-header">
@@ -242,6 +303,13 @@ function CustomerManagement() {
                   </button>
                 </div>
               )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => deleteCustomer(customer)}
+              >
+                {busy ? "Processing..." : "Delete Account"}
+              </button>
             </div>
           ))}
         </div>

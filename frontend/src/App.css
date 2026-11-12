@@ -704,7 +704,6 @@
 
 .public-profile-photo {
   object-fit: cover;
-  border: 4px solid #f1f4f9;
 }
 
 .public-profile-placeholder {

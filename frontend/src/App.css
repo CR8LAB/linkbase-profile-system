@@ -681,7 +681,8 @@
   background: #ffffff;
   padding: 35px 28px;
   border-radius: 18px;
-  box-shadow: 0 12px 40px rgba(16, 29, 59, 0.09);
+  border: none;
+  box-shadow: none;
   text-align: center;
 }
 

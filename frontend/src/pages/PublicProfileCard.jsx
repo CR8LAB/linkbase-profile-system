@@ -158,9 +158,9 @@ function PublicProfileCard({ profile, preview = false }) {
 
         {profile.socialLinks?.length > 0 && (
           <div className="public-social-links">
-            <p className="public-social-label" style={bodyTextStyle}>
-              Follow us
-            </p>
+            <h3 className="public-social-label" style={bodyTextStyle}>
+              Follow Us
+            </h3>
             {profile.socialLinks.map((social) => {
               const Icon = socialIcons[social.platform.toLowerCase()];
 
@@ -174,8 +174,6 @@ function PublicProfileCard({ profile, preview = false }) {
                   aria-label={social.platform}
                   title={social.platform}
                   style={{
-                    backgroundColor:
-                      profile.socialLinkBackgroundColor || "#f1f3f7",
                     color: profile.socialLinkIconColor || "#14213f",
                   }}
                 >

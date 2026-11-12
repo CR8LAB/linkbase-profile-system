@@ -695,9 +695,9 @@
 
 .public-profile-photo,
 .public-profile-placeholder {
-  width: 115px;
-  height: 115px;
-  border-radius: 50%;
+  width: 140px;
+  height: 140px;
+  border-radius: 0;
   margin: 0 auto 20px;
 }
 
@@ -1887,49 +1887,23 @@
 }
 
 .public-social-link {
-  width: 44px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: #f1f3f7;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #14213f;
-  font-size: 21px;
+  font-size: 25px;
   text-decoration: none;
-  transition: all 0.25s ease;
+  transition: transform 0.2s ease;
 }
 
 .public-social-link:hover {
-  transform: translateY(-4px);
-  color: white;
-  background: #14213f;
-}
-
-.public-social-link.facebook:hover {
-  background: #1877f2;
-}
-
-.public-social-link.instagram:hover {
-  background: #e1306c;
-}
-
-.public-social-link.linkedin:hover {
-  background: #0a66c2;
-}
-
-.public-social-link.whatsapp:hover {
-  background: #25d366;
-}
-
-.public-social-link.tiktok:hover {
-  background: #000000;
-}
-
-.public-social-link.youtube:hover {
-  background: #ff0000;
-}
-
-.public-social-link.x:hover {
-  background: #000000;
+  transform: translateY(-2px);
+  color: inherit;
+  background: transparent;
 }

@@ -15,6 +15,8 @@ function ProfileCustomizationFields({
   pdfBusy,
   pdfError,
   pdfSuccess,
+  pdfDisplayNameInput,
+  onPdfDisplayNameChange,
 }) {
   return (
     <div className="profile-editor-layout">
@@ -132,8 +134,8 @@ function ProfileCustomizationFields({
               <input
                 id="pdfDisplayName"
                 name="pdfDisplayName"
-                value={profile.pdfDisplayName || "LinkBase-profile.pdf"}
-                onChange={onChange}
+                value={pdfDisplayNameInput}
+                onChange={onPdfDisplayNameChange}
                 maxLength={120}
                 disabled={Boolean(pdfBusy)}
               />

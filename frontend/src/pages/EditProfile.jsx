@@ -5,6 +5,11 @@ import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
 import AdminPageLayout from "../components/AdminPageLayout.jsx";
 import ProfileQRCode from "../components/ProfileQRCode.jsx";
 import ProfileVisitStatistics from "../components/ProfileVisitStatistics.jsx";
+import {
+  DEFAULT_PDF_DISPLAY_NAME_INPUT,
+  toPdfDisplayNameInput,
+  validatePdfDisplayNameInput,
+} from "../utils/pdfDisplayName.js";
 
 function EditProfile() {
   const { publicId } = useParams();
@@ -20,6 +25,7 @@ function EditProfile() {
   const [pdfBusy, setPdfBusy] = useState("");
   const [pdfError, setPdfError] = useState("");
   const [pdfSuccess, setPdfSuccess] = useState("");
+  const [pdfDisplayNameInput, setPdfDisplayNameInput] = useState(DEFAULT_PDF_DISPLAY_NAME_INPUT);
 
   // Load existing profile
   useEffect(() => {
@@ -43,6 +49,7 @@ function EditProfile() {
         }
 
         setProfile(data.profile);
+        setPdfDisplayNameInput(toPdfDisplayNameInput(data.profile.pdfDisplayName));
       } catch (error) {
         setError(error.message);
       } finally {
@@ -140,6 +147,7 @@ function EditProfile() {
         pdfUrl: data.profile.pdfUrl,
         pdfDisplayName: data.profile.pdfDisplayName,
       }));
+      setPdfDisplayNameInput(toPdfDisplayNameInput(data.profile.pdfDisplayName));
       setPdfSuccess("PDF uploaded successfully.");
     } catch (uploadError) {
       setPdfError(uploadError.message);
@@ -152,6 +160,11 @@ function EditProfile() {
   async function handlePdfDisplayNameSave() {
     setPdfError("");
     setPdfSuccess("");
+    const result = validatePdfDisplayNameInput(pdfDisplayNameInput.trim());
+    if (result.error) {
+      setPdfError(result.error);
+      return;
+    }
     try {
       setPdfBusy("Saving PDF name...");
       const response = await fetch(
@@ -162,7 +175,7 @@ function EditProfile() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
-          body: JSON.stringify({ pdfDisplayName: profile.pdfDisplayName }),
+          body: JSON.stringify({ pdfDisplayName: result.value }),
         },
       );
       const data = await response.json();
@@ -173,6 +186,7 @@ function EditProfile() {
         ...previous,
         pdfDisplayName: data.profile.pdfDisplayName,
       }));
+      setPdfDisplayNameInput(toPdfDisplayNameInput(data.profile.pdfDisplayName));
       setPdfSuccess("PDF name saved successfully.");
     } catch (saveError) {
       setPdfError(saveError.message);
@@ -280,6 +294,8 @@ function EditProfile() {
           pdfBusy={pdfBusy}
           pdfError={pdfError}
           pdfSuccess={pdfSuccess}
+          pdfDisplayNameInput={pdfDisplayNameInput}
+          onPdfDisplayNameChange={(event) => setPdfDisplayNameInput(event.target.value)}
         />
 
         {error && <p className="error-message">{error}</p>}

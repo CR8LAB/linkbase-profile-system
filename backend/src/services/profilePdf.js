@@ -10,17 +10,13 @@ export function validatePdfDisplayName(value) {
   }
 
   const displayName = value.trim();
-  if (!displayName || displayName.length > 120) {
+  const baseName = displayName.replace(/(?:\.pdf)+$/i, "");
+  if (!baseName || baseName.length > 120) {
     return { error: "PDF display name must be between 1 and 120 characters" };
   }
-  if (/[/\\<>:"|?*\u0000-\u001f\u007f]/u.test(displayName)) {
+  if (/[/\\<>:"|?*\u0000-\u001f\u007f]/u.test(baseName)) {
     return { error: "PDF display name contains unsafe characters" };
   }
-  if (!/\.pdf$/i.test(displayName)) {
-    return { error: "PDF display name must end in .pdf" };
-  }
-
-  const baseName = displayName.slice(0, -4);
   if (
     !baseName ||
     baseName.includes("..") ||

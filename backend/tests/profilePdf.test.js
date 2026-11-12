@@ -32,12 +32,24 @@ test("PDF validation requires PDF MIME type, extension, signature and size", () 
   assert.match(validatePdfFile(null), /select/);
 });
 
-test("PDF display names require a safe filename and preserve the PDF extension", () => {
+test("PDF display names accept a safe base name and normalize to one PDF extension", () => {
   assert.deepEqual(validatePdfDisplayName("  Client Guide.PDF  "), {
     value: "Client Guide.pdf",
   });
+  assert.deepEqual(validatePdfDisplayName("LinkBase-profile"), {
+    value: "LinkBase-profile.pdf",
+  });
+  assert.deepEqual(validatePdfDisplayName("report.pdf.pdf"), {
+    value: "report.pdf",
+  });
+  assert.deepEqual(validatePdfDisplayName("x".repeat(120)), {
+    value: `${"x".repeat(120)}.pdf`,
+  });
+  assert.match(validatePdfDisplayName("x".repeat(121)).error, /1 and 120/);
+  assert.match(validatePdfDisplayName("").error, /1 and 120/);
+  assert.match(validatePdfDisplayName("   ").error, /1 and 120/);
   assert.equal(validatePdfDisplayName("../private.pdf").error.includes("unsafe"), true);
-  assert.equal(validatePdfDisplayName("report").error.includes(".pdf"), true);
+  assert.equal(validatePdfDisplayName("Unsafe/Name").error.includes("unsafe"), true);
   assert.ok(validatePdfDisplayName("..").error);
   assert.ok(validatePdfDisplayName("CON.pdf").error);
   assert.equal(getUploadPdfDisplayName("client-guide.PDF"), "client-guide.pdf");
@@ -46,6 +58,7 @@ test("PDF display names require a safe filename and preserve the PDF extension",
     getPdfContentDisposition("Rapport été.pdf"),
     'attachment; filename="Rapport _t_.pdf"; filename*=UTF-8\'\'Rapport%20%C3%A9t%C3%A9.pdf',
   );
+  assert.match(getPdfContentDisposition("report.pdf.pdf"), /filename="report\.pdf";/);
 });
 
 function createResponse() {
@@ -95,7 +108,7 @@ test("PDF name updates authorize admins and assigned customers without touching 
   ]) {
     const response = createResponse();
     await handler(
-      { params: { publicId: "LB001" }, body: { pdfDisplayName: "New name.pdf" }, user },
+      { params: { publicId: "LB001" }, body: { pdfDisplayName: " New name " }, user },
       response,
     );
     assert.equal(response.statusCode, 200);

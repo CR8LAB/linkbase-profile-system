@@ -13,6 +13,7 @@ function CompanyManagement() {
   const [editingFont, setEditingFont] = useState("Raleway");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingCompanyId, setDeletingCompanyId] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -107,6 +108,50 @@ function CompanyManagement() {
     }
   }
 
+  async function deleteCompany(company) {
+    if (!window.confirm(`Delete the company "${company.name}"?`)) return;
+
+    setDeletingCompanyId(company.id);
+    setError("");
+    setSuccess("");
+    let deleted = false;
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/companies/${encodeURIComponent(company.id)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Could not delete company");
+      deleted = true;
+
+      const refreshResponse = await fetch(`${API_BASE_URL}/api/companies`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const refreshedData = await refreshResponse.json();
+      if (!refreshResponse.ok) {
+        setSuccess("Company deleted, but the company list could not be refreshed.");
+      } else {
+        setCompanies(refreshedData.companies || []);
+        setSuccess(`${company.name} was deleted.`);
+      }
+
+      if (editingCompanyId === company.id) setEditingCompanyId("");
+    } catch (deleteError) {
+      if (deleted) {
+        setSuccess("Company deleted, but the company list could not be refreshed.");
+      } else {
+        setError(deleteError.message);
+      }
+    } finally {
+      setDeletingCompanyId("");
+    }
+  }
+
   return (
     <AdminPageLayout>
       <header className="admin-header">
@@ -174,14 +219,14 @@ function CompanyManagement() {
                   </select>
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={saving || Boolean(deletingCompanyId)}
                     onClick={() => saveCompany(company.id)}
                   >
                     Save
                   </button>
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={saving || Boolean(deletingCompanyId)}
                     onClick={() => setEditingCompanyId("")}
                   >
                     Cancel
@@ -194,6 +239,7 @@ function CompanyManagement() {
                   <button
                     type="button"
                     className="company-edit-button"
+                    disabled={Boolean(deletingCompanyId)}
                     onClick={() => {
                       setEditingCompanyId(company.id);
                       setEditingName(company.name);
@@ -204,6 +250,14 @@ function CompanyManagement() {
                   </button>
                 </>
               )}
+              <button
+                type="button"
+                className="company-edit-button"
+                disabled={saving || Boolean(deletingCompanyId)}
+                onClick={() => deleteCompany(company)}
+              >
+                {deletingCompanyId === company.id ? "Deleting..." : "Delete"}
+              </button>
             </div>
           ))}
         </div>

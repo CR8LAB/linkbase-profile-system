@@ -1,5 +1,14 @@
 import prisma from "../config/prisma.js";
 import { profileFontFamilies } from "../services/profileValidation.js";
+import {
+  createCompanyDeletionHandler,
+  deleteCompanyWithNoProfiles,
+} from "../services/companyDeletion.js";
+
+export const deleteCompany = createCompanyDeletionHandler({
+  deleteCompanyIfUnassociated: (companyId) =>
+    prisma.$transaction((tx) => deleteCompanyWithNoProfiles(tx, companyId)),
+});
 
 export async function createCompany(req, res) {
   try {

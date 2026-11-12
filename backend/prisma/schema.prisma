@@ -44,6 +44,7 @@ model Profile {
   socialLinkBackgroundColor  String @default("#f1f3f7")
   socialLinkIconColor        String @default("#14213f")
   pdfUrl          String?
+  pdfDisplayName  String?
   visitCount      Int     @default(0)
 
   companyId String?

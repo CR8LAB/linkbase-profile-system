@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { getProfilePdfObjectName } from "./storageObjects.js";
+
+export {
+  getProfileLogoObjectName,
+  getProfilePdfObjectName,
+  getProfilePhotoObjectName,
+} from "./storageObjects.js";
 
 export const MAX_PDF_SIZE_BYTES = 5 * 1024 * 1024;
 export const DEFAULT_PDF_DISPLAY_NAME = "LinkBase-profile.pdf";
@@ -133,65 +140,48 @@ export function createProfilePdfObjectName(profileId) {
   return `profiles/${profileId}/pdf/${randomUUID()}.pdf`;
 }
 
-export function getProfilePdfObjectName(pdfUrl, bucketName, profileId) {
-  try {
-    const url = new URL(pdfUrl);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "storage.googleapis.com" ||
-      url.port ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    ) return null;
-
-    const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-    if (parts.length < 3 || parts[0] !== bucketName) return null;
-    const objectName = parts.slice(1).join("/");
-    if (!objectName.startsWith(`profiles/${profileId}/pdf/`)) return null;
-    const fileName = objectName.slice(`profiles/${profileId}/pdf/`.length);
-    if (!/^[0-9a-f-]+\.pdf$/i.test(fileName)) return null;
-    return objectName;
-  } catch {
-    return null;
-  }
+export function createPdfConflictError() {
+  return Object.assign(new Error("Profile PDF changed during the operation"), {
+    code: "PROFILE_PDF_CONFLICT",
+  });
 }
 
-export function getProfilePhotoObjectName(photoUrl, bucketName, publicId) {
-  try {
-    const url = new URL(photoUrl);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "storage.googleapis.com" ||
-      url.port ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    ) return null;
-
-    const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-    if (parts.length !== 4 || parts[0] !== bucketName) return null;
-    const objectName = parts.slice(1).join("/");
-    if (!objectName.startsWith(`profiles/${publicId}/`)) return null;
-    const fileName = objectName.slice(`profiles/${publicId}/`.length);
-    if (!/^[0-9a-f-]+\.(jpg|png|webp)$/i.test(fileName)) return null;
-    return objectName;
-  } catch {
-    return null;
-  }
+export async function persistProfilePdfIfUnchanged(
+  database,
+  publicId,
+  expectedPdfUrl,
+  pdfUrl,
+  pdfDisplayName,
+) {
+  const result = await database.profile.updateMany({
+    where: { publicId, pdfUrl: expectedPdfUrl },
+    data: { pdfUrl, pdfDisplayName },
+  });
+  if (result.count !== 1) return null;
+  return { publicId, pdfUrl, pdfDisplayName };
 }
 
-export async function removeProfileMedia({ bucket, profile }) {
-  const objectNames = [
-    getProfilePhotoObjectName(profile.photoUrl, bucket.name, profile.publicId),
-    getProfilePdfObjectName(profile.pdfUrl, bucket.name, profile.id),
-  ].filter(Boolean);
+export function clearProfilePdfIfUnchanged(database, publicId, expectedPdfUrl, expectedUserId) {
+  return database.profile.updateMany({
+    where: {
+      publicId,
+      pdfUrl: expectedPdfUrl,
+      ...(expectedUserId === undefined ? {} : { userId: expectedUserId }),
+    },
+    data: { pdfUrl: null, pdfDisplayName: null },
+  });
+}
 
-  for (const objectName of objectNames) {
-    await bucket.file(objectName).delete({ ignoreNotFound: true });
-  }
+export function restoreProfilePdfIfEmpty(
+  database,
+  publicId,
+  pdfUrl,
+  pdfDisplayName,
+) {
+  return database.profile.updateMany({
+    where: { publicId, pdfUrl: null },
+    data: { pdfUrl, pdfDisplayName },
+  });
 }
 
 export function getPdfDownloadUrl(publicId) {
@@ -203,32 +193,48 @@ export async function uploadAndReplaceProfilePdf({
   profileId,
   publicId,
   buffer,
-  previousPdfUrl,
   pdfDisplayName,
   persist,
+  createCleanupCandidate,
+  activateCleanupCandidate,
+  processCleanup,
 }) {
   const objectName = createProfilePdfObjectName(profileId);
   const object = bucket.file(objectName);
-  await object.save(buffer, {
-    resumable: false,
-    metadata: { contentType: "application/pdf", cacheControl: "private, no-store" },
-  });
+  await createCleanupCandidate(bucket.name, objectName);
+  try {
+    await object.save(buffer, {
+      resumable: false,
+      metadata: { contentType: "application/pdf", cacheControl: "private, no-store" },
+    });
+  } catch (error) {
+    await activateCleanupCandidate(bucket.name, objectName).catch((cleanupError) => {
+      console.error("Could not activate failed PDF cleanup candidate:", cleanupError.code || "QUEUE_UPDATE_FAILED");
+    });
+    await processCleanup().catch((cleanupError) => {
+      console.error("Could not process failed PDF cleanup candidate:", cleanupError.code || "CLEANUP_PROCESS_FAILED");
+    });
+    throw error;
+  }
 
   const storedUrl = `https://storage.googleapis.com/${bucket.name}/${objectName}`;
   let persisted;
   try {
-    persisted = await persist(storedUrl, pdfDisplayName);
+    persisted = await persist(storedUrl, pdfDisplayName, objectName);
+    if (!persisted) throw createPdfConflictError();
   } catch (error) {
-    await object.delete().catch(() => {});
+    await activateCleanupCandidate(bucket.name, objectName).catch((cleanupError) => {
+      console.error("Could not activate uploaded PDF cleanup candidate:", cleanupError.code || "QUEUE_UPDATE_FAILED");
+    });
+    await processCleanup().catch((cleanupError) => {
+      console.error("Could not process uploaded PDF cleanup candidate:", cleanupError.code || "CLEANUP_PROCESS_FAILED");
+    });
     throw error;
   }
 
-  const oldObjectName = getProfilePdfObjectName(previousPdfUrl, bucket.name, profileId);
-  if (oldObjectName && oldObjectName !== objectName) {
-    await bucket.file(oldObjectName).delete().catch((error) => {
-      console.error("Could not remove replaced profile PDF object:", error.message);
-    });
-  }
+  await processCleanup().catch((error) => {
+    console.error("Could not process queued PDF cleanup:", error.code || "CLEANUP_PROCESS_FAILED");
+  });
   return {
     ...persisted,
     pdfUrl: getPdfDownloadUrl(publicId),
@@ -237,19 +243,12 @@ export async function uploadAndReplaceProfilePdf({
 }
 
 export async function removeStoredProfilePdf({
-  bucket,
-  profileId,
-  previousPdfUrl,
   clear,
-  restore,
+  processCleanup,
 }) {
-  await clear();
-  const objectName = getProfilePdfObjectName(previousPdfUrl, bucket.name, profileId);
-  if (!objectName) return;
-  try {
-    await bucket.file(objectName).delete();
-  } catch (error) {
-    await restore();
-    throw error;
-  }
+  const cleared = await clear();
+  if (!cleared) throw createPdfConflictError();
+  await processCleanup().catch((error) => {
+    console.error("Could not process queued PDF cleanup:", error.code || "CLEANUP_PROCESS_FAILED");
+  });
 }

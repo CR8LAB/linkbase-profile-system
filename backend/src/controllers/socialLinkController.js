@@ -17,11 +17,18 @@ export async function createSocialLink(req, res) {
       });
     }
 
+    let parsedUrl;
     try {
-      new URL(url);
+      parsedUrl = new URL(url);
     } catch {
       return res.status(400).json({
         message: "Please provide a valid URL",
+      });
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return res.status(400).json({
+        message: "Only HTTP and HTTPS URLs are allowed",
       });
     }
 

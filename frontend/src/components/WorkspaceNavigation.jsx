@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../apiBase.js";
 
 const navigationByRole = {
   ADMIN: [
@@ -17,10 +19,54 @@ const navigationByRole = {
 
 function WorkspaceNavigation({ role }) {
   const navigate = useNavigate();
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  function logout() {
-    sessionStorage.removeItem("token");
-    navigate("/", { replace: true });
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
+    let logoutWarning = "";
+
+    try {
+      const token = sessionStorage.getItem("token");
+      if (token) {
+        const abortController = new AbortController();
+        const timeoutId = window.setTimeout(() => abortController.abort(), 5000);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            signal: abortController.signal,
+          });
+
+          if (!response.ok) {
+            logoutWarning =
+              "Local logout succeeded, but server-side session revocation could not be confirmed.";
+          }
+        } catch {
+          logoutWarning =
+            "Local logout succeeded, but server-side session revocation could not be confirmed.";
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      }
+    } catch {
+      logoutWarning =
+        "Local logout succeeded, but server-side session revocation could not be confirmed.";
+    } finally {
+      sessionStorage.removeItem("token");
+      navigate(
+        "/",
+        {
+          replace: true,
+          state: {
+            message: "You have been logged out.",
+            logoutWarning,
+          },
+        },
+      );
+    }
   }
 
   return (
@@ -61,8 +107,9 @@ function WorkspaceNavigation({ role }) {
         type="button"
         className="workspace-logout-button"
         onClick={logout}
+        disabled={loggingOut}
       >
-        Log Out
+        {loggingOut ? "Logging out..." : "Log Out"}
       </button>
     </header>
   );

@@ -1,17 +1,30 @@
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useLayoutEffect, useReducer, useState } from "react";
+import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
+import {
+  actionTokenReducer,
+  readActionToken,
+  removeActionTokenFromUrl,
+  submitActionToken,
+} from "../utils/actionToken.js";
 import PasswordField from "./PasswordField.jsx";
 import "../App.css";
 
 function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const [token, dispatchToken] = useReducer(
+    actionTokenReducer,
+    window.location,
+    readActionToken,
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useLayoutEffect(() => {
+    removeActionTokenFromUrl(window.location, window.history);
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -26,19 +39,14 @@ function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/auth/password-reset/complete`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password }),
-        },
-      );
-      const data = await response.json();
-
-      if (!response.ok)
-        throw new Error(data.message || "Could not reset password");
-      setMessage(data.message);
+      await submitActionToken({
+        endpoint: `${API_BASE_URL}/api/auth/password-reset/complete`,
+        token,
+        password,
+        errorMessage: "Could not reset password",
+        clearToken: () => dispatchToken({ type: "clear" }),
+        onSuccess: (data) => setMessage(data.message),
+      });
     } catch (submitError) {
       setError(submitError.message);
     } finally {
@@ -58,7 +66,9 @@ function ResetPassword() {
             Use at least 12 characters. Reset links expire after 30 minutes.
           </p>
         </div>
-        {!token ? (
+        {message ? (
+          <p className="success-message">{message}</p>
+        ) : !token ? (
           <p className="error-message">
             This reset link is invalid or expired.
           </p>
@@ -79,12 +89,9 @@ function ResetPassword() {
               autoComplete="new-password"
             />
             {error && <p className="error-message">{error}</p>}
-            {message && <p className="success-message">{message}</p>}
-            {!message && (
-              <button type="submit" disabled={loading}>
-                {loading ? "Updating..." : "Update Password"}
-              </button>
-            )}
+            <button type="submit" disabled={loading}>
+              {loading ? "Updating..." : "Update Password"}
+            </button>
           </form>
         )}
         <p className="auth-secondary-link">

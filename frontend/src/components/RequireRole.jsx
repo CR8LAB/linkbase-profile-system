@@ -1,30 +1,31 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-
-function getTokenRole(token) {
-  try {
-    const encodedPayload = token.split(".")[1];
-    const base64 = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(
-      atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")),
-    );
-
-    if (typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now()) {
-      return null;
-    }
-
-    return payload.role;
-  } catch {
-    return null;
-  }
-}
+import { getTokenSession } from "../utils/tokenSession.js";
 
 function RequireRole({ role }) {
   const location = useLocation();
   const token = sessionStorage.getItem("token");
-  const tokenRole = token ? getTokenRole(token) : null;
+  const tokenSession = token
+    ? getTokenSession(token)
+    : { role: null, expired: false, invalid: false, expiresAt: null };
+  const tokenRole = tokenSession.role;
 
   if (!tokenRole) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    if (token) sessionStorage.removeItem("token");
+    return (
+      <Navigate
+        to="/"
+        replace
+        state={{
+          from: location,
+          ...(tokenSession.expired
+            ? {
+                message: "Your session has expired. Please sign in again.",
+                sessionExpired: true,
+              }
+            : {}),
+        }}
+      />
+    );
   }
 
   if (tokenRole !== role) {

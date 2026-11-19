@@ -7,6 +7,8 @@ import "../App.css";
 function Login() {
   const location = useLocation();
   const notice = location.state?.message || "";
+  const sessionExpired = location.state?.sessionExpired === true;
+  const logoutWarning = location.state?.logoutWarning || "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -60,7 +62,16 @@ function Login() {
         </div>
 
         <form onSubmit={handleLogin}>
-          {notice && <p className="success-message">{notice}</p>}
+          {notice && (
+            <p className={sessionExpired ? "error-message" : "success-message"} role="status">
+              {notice}
+            </p>
+          )}
+          {logoutWarning && (
+            <p className="error-message" role="alert">
+              {logoutWarning} Any copied token may remain usable until it expires.
+            </p>
+          )}
           <div className="form-group">
             <label>Email Address</label>
             <input

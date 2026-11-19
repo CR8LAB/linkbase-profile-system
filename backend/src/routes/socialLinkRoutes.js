@@ -18,12 +18,12 @@ router.post("/", authenticate, createSocialLink);
 // READ - Public
 router.get("/:profileId", getSocialLinks);
 
+router.patch("/reorder", authenticate, reorderSocialLinks);
+
 // UPDATE - Admin or profile owner
 router.patch("/:id", authenticate, updateSocialLink);
 
 // DELETE - Admin or profile owner
 router.delete("/:id", authenticate, deleteSocialLink);
-
-router.patch("/reorder", authenticate, reorderSocialLinks);
 
 export default router;

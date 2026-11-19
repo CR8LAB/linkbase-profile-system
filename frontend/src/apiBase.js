@@ -1,3 +1,8 @@
-export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
-).replace(/\/$/, "");
+import { resolveApiBaseUrl } from "./utils/productionUrlConfig.js";
+
+const viteEnvironment = import.meta.env || {};
+const isViteRuntime = typeof import.meta.env !== "undefined";
+
+export const API_BASE_URL = isViteRuntime
+  ? resolveApiBaseUrl(viteEnvironment.VITE_API_BASE_URL, viteEnvironment.DEV)
+  : "http://localhost:5000";

@@ -6,6 +6,7 @@ import {
   createUser,
   inviteProfileClaim,
   login,
+  logout,
   requestPasswordReset,
 } from "../controllers/authController.js";
 
@@ -13,7 +14,9 @@ import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
 import {
   claimRateLimit,
   invitationRateLimit,
+  loginAccountRateLimit,
   loginRateLimit,
+  resetRequestAccountRateLimit,
   resetCompleteRateLimit,
   resetRequestRateLimit,
 } from "../middleware/authRateLimit.js";
@@ -21,7 +24,8 @@ import {
 const router = Router();
 
 // Public login
-router.post("/login", loginRateLimit, login);
+router.post("/login", loginRateLimit, loginAccountRateLimit, login);
+router.post("/logout", authenticate, logout);
 
 router.post(
   "/profiles/:publicId/claim-invitations",
@@ -34,6 +38,7 @@ router.post("/claim", claimRateLimit, claimProfile);
 router.post(
   "/password-reset/request",
   resetRequestRateLimit,
+  resetRequestAccountRateLimit,
   requestPasswordReset,
 );
 router.post(

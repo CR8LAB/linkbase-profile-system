@@ -13,6 +13,7 @@ import {
   removeProfilePdf,
   redirectProfilePdf,
   updateProfilePdfDisplayName,
+  authorizeProfileOwner,
 } from "../controllers/profileController.js";
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
@@ -52,6 +53,7 @@ router.patch("/:publicId/my-details", authenticate, updateMyProfile);
 router.post(
   "/:publicId/photo",
   authenticate,
+  authorizeProfileOwner,
   upload.single("photo"),
   uploadMyPhoto,
 );
@@ -59,6 +61,7 @@ router.post(
 router.post(
   "/:publicId/pdf",
   authenticate,
+  authorizeProfileOwner,
   uploadPdf,
   uploadProfilePdf,
 );
@@ -74,6 +77,7 @@ router.delete("/:publicId/pdf", authenticate, removeProfilePdf);
 router.post(
   "/:publicId/logo",
   authenticate,
+  authorizeProfileOwner,
   upload.single("logo"),
   uploadProfileLogo,
 );

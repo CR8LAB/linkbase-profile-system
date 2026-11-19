@@ -1,11 +1,11 @@
 import prisma from "../config/prisma.js";
 import { bucket } from "../config/storage.js";
-import { randomUUID } from "node:crypto";
 import {
   canCustomizeProfile,
   customerProfileCustomizationFields,
   validateProfileCustomization,
 } from "../services/profileValidation.js";
+import { assignProfileAtomically } from "../services/profileConcurrency.js";
 import { generateShortCode } from "../services/shortCode.js";
 import {
   createPdfDisplayNameUpdateHandler,
@@ -13,10 +13,18 @@ import {
   DEFAULT_PDF_DISPLAY_NAME,
   getUploadPdfDisplayName,
   getPdfDownloadUrl,
-  removeStoredProfilePdf,
+  createPdfConflictError,
   uploadAndReplaceProfilePdf,
   validatePdfFile,
 } from "../services/profilePdf.js";
+import {
+  activateStorageCleanupCandidate,
+  clearProfilePdfAndQueueCleanup,
+  createStorageCleanupCandidate,
+  processStorageCleanupJobs,
+  uploadAndReplaceProfileImage,
+  persistProfileAssetReplacement,
+} from "../services/storageCleanup.js";
 
 export const updateProfilePdfDisplayName = createPdfDisplayNameUpdateHandler({
   findProfile: (publicId) =>
@@ -42,8 +50,30 @@ export const redirectProfilePdf = createPdfDownloadHandler({
   bucket,
 });
 
+export async function authorizeProfileOwner(req, res, next) {
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { publicId: req.params.publicId },
+      select: { userId: true },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    if (!canCustomizeProfile(req.user, profile)) {
+      return res.status(403).json({ message: "You cannot edit this profile" });
+    }
+
+    return next();
+  } catch (error) {
+    console.error("Profile upload authorization failed:", error);
+    return res.status(500).json({ message: "Could not authorize profile upload" });
+  }
+}
+
 export async function createProfile(req, res) {
   try {
+    const body = req.body || {};
     const {
       publicId,
       fullName,
@@ -52,8 +82,6 @@ export async function createProfile(req, res) {
       email,
       phone,
       websiteUrl,
-      photoUrl,
-      logoUrl,
       fontFamily,
       buttonColor,
       bodyTextColor,
@@ -61,7 +89,19 @@ export async function createProfile(req, res) {
       buttonTextColor,
       saveContactButtonColor,
       saveContactButtonTextColor,
-    } = req.body;
+    } = body;
+
+    if (hasNonEmptyImageUrl(body.photoUrl)) {
+      return res.status(400).json({
+        message: "photoUrl cannot be provided. Upload the profile photo after creating the profile.",
+      });
+    }
+
+    if (hasNonEmptyImageUrl(body.logoUrl)) {
+      return res.status(400).json({
+        message: "logoUrl cannot be provided. Upload the profile logo after creating the profile.",
+      });
+    }
 
     if (
       typeof publicId !== "string" ||
@@ -92,8 +132,6 @@ export async function createProfile(req, res) {
             shortCode: generateShortCode(),
             companyId: companyId.trim(),
             ...validation.updates,
-            photoUrl,
-            logoUrl,
           },
         });
         break;
@@ -121,6 +159,11 @@ export async function createProfile(req, res) {
   }
 }
 // updating the profile
+
+function hasNonEmptyImageUrl(value) {
+  if (value === undefined || value === null) return false;
+  return typeof value !== "string" || value.trim().length > 0;
+}
 
 export async function updateProfile(req, res) {
   try {
@@ -398,61 +441,28 @@ export async function assignProfile(req, res) {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const result = await prisma.$transaction((tx) =>
+      assignProfileAtomically(tx, publicId, userId),
+    );
 
-    if (!user || user.role !== "CUSTOMER") {
-      return res.status(400).json({
-        message: "Valid customer account required",
-      });
+    if (result.status === "invalid-customer") {
+      return res.status(400).json({ message: "Valid customer account required" });
     }
-
-    const profile = await prisma.profile.findUnique({
-      where: { publicId },
-    });
-
-    if (!profile) {
-      return res.status(404).json({
-        message: "Profile not found",
-      });
+    if (result.status === "not-found") {
+      return res.status(404).json({ message: "Profile not found" });
     }
-
-    if (profile.userId && profile.userId !== userId) {
+    if (result.status === "profile-conflict") {
       return res.status(409).json({
         message: "Profile is already assigned to another customer",
       });
     }
-
-    const alreadyAssignedProfile = await prisma.profile.findFirst({
-      where: { userId },
-      select: { publicId: true },
-    });
-
-    if (
-      alreadyAssignedProfile &&
-      alreadyAssignedProfile.publicId !== publicId
-    ) {
+    if (result.status === "customer-conflict") {
       return res.status(409).json({
         message: "Customer is already assigned to another profile",
       });
     }
 
-    const updatedProfile = await prisma.profile.update({
-      where: { publicId },
-      data: { userId },
-      select: {
-        publicId: true,
-        fullName: true,
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
-    });
-
-    return res.status(200).json(updatedProfile);
+    return res.status(200).json(result.profile);
   } catch (error) {
     console.error(error);
 
@@ -484,9 +494,9 @@ async function uploadProfileImage(req, res, imageField) {
 
     const { publicId } = req.params;
 
-    // Find the profile
     const profile = await prisma.profile.findUnique({
       where: { publicId },
+      select: { id: true, publicId: true, fullName: true, userId: true, photoUrl: true, logoUrl: true },
     });
 
     if (!profile) {
@@ -502,38 +512,14 @@ async function uploadProfileImage(req, res, imageField) {
       });
     }
 
-    const extensions = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-    };
-
-    const extension = extensions[req.file.mimetype];
-    const fileName =
-      imageField === "photoUrl"
-        ? `profiles/${publicId}/${randomUUID()}.${extension}`
-        : `profiles/${publicId}/logos/${randomUUID()}.${extension}`;
-
-    const file = bucket.file(fileName);
-
-    await file.save(req.file.buffer, {
-      resumable: false,
-      metadata: {
-        contentType: req.file.mimetype,
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-
-    const photoUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
-    const updatedProfile = await prisma.profile.update({
-      where: { publicId },
-      data: { [imageField]: photoUrl },
-      select: {
-        publicId: true,
-        fullName: true,
-        [imageField]: true,
-      },
+    const updatedProfile = await uploadAndReplaceProfileImage({
+      database: prisma,
+      bucket,
+      profile,
+      publicId,
+      imageField,
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
     });
 
     return res.status(200).json({
@@ -542,7 +528,10 @@ async function uploadProfileImage(req, res, imageField) {
       profile: updatedProfile,
     });
   } catch (error) {
-    console.error("Profile image upload error:", error);
+    if (error.code === "PROFILE_MEDIA_CONFLICT") {
+      return res.status(409).json({ message: "The profile image changed during this request. Please retry." });
+    }
+    console.error("Profile image upload failed:", error.code || "IMAGE_UPLOAD_FAILED");
 
     return res.status(500).json({
       message: "Failed to upload profile image",
@@ -575,13 +564,24 @@ export async function uploadProfilePdf(req, res) {
       profileId: profile.id,
       publicId,
       buffer: req.file.buffer,
-      previousPdfUrl: profile.pdfUrl,
       pdfDisplayName: getUploadPdfDisplayName(req.file.originalname),
-      persist: (pdfUrl, pdfDisplayName) =>
-        prisma.profile.update({
-          where: { publicId },
-          data: { pdfUrl, pdfDisplayName },
-          select: { publicId: true, pdfUrl: true, pdfDisplayName: true },
+      createCleanupCandidate: (bucketName, objectName) =>
+        createStorageCleanupCandidate(prisma, bucketName, objectName),
+      activateCleanupCandidate: (bucketName, objectName) =>
+        activateStorageCleanupCandidate(prisma, bucketName, objectName),
+      processCleanup: () => processStorageCleanupJobs({ database: prisma, bucket }),
+      persist: async (pdfUrl, pdfDisplayName, newObjectName) =>
+        persistProfileAssetReplacement({
+          database: prisma,
+          bucketName: bucket.name,
+          publicId,
+          profileId: profile.id,
+          expectedUserId: profile.userId,
+          imageField: "pdfUrl",
+          expectedUrl: profile.pdfUrl,
+          newUrl: pdfUrl,
+          newObjectName,
+          pdfDisplayName,
         }),
     });
 
@@ -592,6 +592,9 @@ export async function uploadProfilePdf(req, res) {
     });
   } catch (error) {
     console.error("Profile PDF upload error:", error);
+    if (error.code === "PROFILE_PDF_CONFLICT") {
+      return res.status(409).json({ message: "The PDF changed during this request. Please retry." });
+    }
     return res.status(500).json({ message: "Failed to upload PDF" });
   }
 }
@@ -611,23 +614,17 @@ export async function removeProfilePdf(req, res) {
       });
     }
 
-    await removeStoredProfilePdf({
-      bucket,
+    const cleared = await clearProfilePdfAndQueueCleanup({
+      database: prisma,
+      bucketName: bucket.name,
+      publicId,
       profileId: profile.id,
-      previousPdfUrl: profile.pdfUrl,
-      clear: () =>
-        prisma.profile.update({
-          where: { publicId },
-          data: { pdfUrl: null, pdfDisplayName: null },
-        }),
-      restore: () =>
-        prisma.profile.update({
-          where: { publicId },
-          data: {
-            pdfUrl: profile.pdfUrl,
-            pdfDisplayName: profile.pdfDisplayName,
-          },
-        }),
+      expectedUserId: profile.userId,
+      expectedUrl: profile.pdfUrl,
+    });
+    if (!cleared) throw createPdfConflictError();
+    await processStorageCleanupJobs({ database: prisma, bucket }).catch((error) => {
+      console.error("Queued PDF cleanup could not run:", error.code || "CLEANUP_PROCESS_FAILED");
     });
     return res.status(200).json({
       success: true,
@@ -635,6 +632,9 @@ export async function removeProfilePdf(req, res) {
     });
   } catch (error) {
     console.error("Profile PDF removal error:", error);
+    if (error.code === "PROFILE_PDF_CONFLICT") {
+      return res.status(409).json({ message: "The PDF changed during this request. Please retry." });
+    }
     return res.status(500).json({ message: "Failed to remove PDF" });
   }
 }

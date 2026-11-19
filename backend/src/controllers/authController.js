@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
+import { getJwtConfig, JWT_EXPIRES_IN } from "../config/jwt.js";
 import jwt from "jsonwebtoken";
 import {
   createOneTimeToken,
@@ -17,6 +18,8 @@ import {
 
 const resetRequestMessage =
   "If an account matches that email, password reset instructions will be sent.";
+export const DUMMY_PASSWORD_HASH =
+  "$2b$12$jIuB4W4U455k/UxEd21QWO901pLk1hoZE5g8RSm9ceE.WSRQ7k.sa";
 
 export async function inviteProfileClaim(req, res) {
   const { publicId } = req.params;
@@ -206,120 +209,162 @@ export async function claimProfile(req, res) {
   }
 }
 
-export async function requestPasswordReset(req, res) {
-  const { email } = req.body || {};
+export function createPasswordResetRequestHandler(
+  database = prisma,
+  sendResetEmail = sendPasswordResetEmail,
+) {
+  return async function requestPasswordReset(req, res) {
+    const { email } = req.body || {};
 
-  if (!isValidEmail(email)) {
-    return res.status(400).json({ message: "Enter a valid email address" });
-  }
+    if (!isValidEmail(typeof email === "string" ? email.trim() : email)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
 
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email: normalizeEmail(email) },
-      select: { id: true, email: true },
-    });
+    if (req.authResetRequestSuppressed) {
+      return res.status(202).json({
+        success: true,
+        message: resetRequestMessage,
+      });
+    }
 
-    if (user) {
-      const now = new Date();
-      const token = createOneTimeToken();
-      const resetToken = await prisma.$transaction(async (tx) => {
-        await tx.passwordResetToken.updateMany({
-          where: { userId: user.id, usedAt: null },
-          data: { usedAt: now },
-        });
-
-        return tx.passwordResetToken.create({
-          data: {
-            tokenHash: hashOneTimeToken(token),
-            userId: user.id,
-            expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
-          },
-        });
+    try {
+      const user = await database.user.findUnique({
+        where: { email: normalizeEmail(email) },
+        select: { id: true, email: true },
       });
 
-      try {
-        await sendPasswordResetEmail({ email: user.email, token });
-      } catch (error) {
-        await prisma.passwordResetToken.update({
-          where: { id: resetToken.id },
-          data: { usedAt: new Date() },
-        });
-        console.error("Password reset email could not be sent:", error.message);
-      }
-    }
-  } catch (error) {
-    console.error("Password reset request failed:", error);
-  }
+      if (user) {
+        const now = new Date();
+        const token = createOneTimeToken();
+        const resetToken = await database.$transaction(async (tx) => {
+          await tx.passwordResetToken.updateMany({
+            where: { userId: user.id, usedAt: null },
+            data: { usedAt: now },
+          });
 
-  return res.status(202).json({ success: true, message: resetRequestMessage });
+          return tx.passwordResetToken.create({
+            data: {
+              tokenHash: hashOneTimeToken(token),
+              userId: user.id,
+              expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+            },
+          });
+        });
+
+        try {
+          await sendResetEmail({ email: user.email, token });
+        } catch (error) {
+          await database.passwordResetToken.update({
+            where: { id: resetToken.id },
+            data: { usedAt: new Date() },
+          });
+          console.error("Password reset email could not be sent:", error.message);
+        }
+      }
+    } catch (error) {
+      console.error("Password reset request failed:", error);
+    }
+
+    return res.status(202).json({ success: true, message: resetRequestMessage });
+  };
 }
 
-export async function completePasswordReset(req, res) {
-  const { token, password } = req.body || {};
+export const requestPasswordReset = createPasswordResetRequestHandler();
 
-  if (!isValidOneTimeToken(token)) {
-    return res
-      .status(400)
-      .json({ message: "Reset link is invalid or expired" });
-  }
+export function createCompletePasswordResetHandler(database = prisma) {
+  return async function completePasswordReset(req, res) {
+    const { token, password } = req.body || {};
 
-  if (!isValidPassword(password)) {
-    return res.status(400).json({
-      message:
-        "Password must be at least 12 characters and no more than 72 UTF-8 bytes",
-    });
-  }
-
-  const now = new Date();
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      const resetToken = await tx.passwordResetToken.findUnique({
-        where: { tokenHash: hashOneTimeToken(token) },
-      });
-
-      if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
-        throw new Error("INVALID_RESET_TOKEN");
-      }
-
-      const consumed = await tx.passwordResetToken.updateMany({
-        where: {
-          id: resetToken.id,
-          usedAt: null,
-          expiresAt: { gt: now },
-        },
-        data: { usedAt: now },
-      });
-
-      if (consumed.count !== 1) throw new Error("INVALID_RESET_TOKEN");
-
-      await tx.user.update({
-        where: { id: resetToken.userId },
-        data: { passwordHash },
-      });
-
-      await tx.passwordResetToken.updateMany({
-        where: { userId: resetToken.userId, usedAt: null },
-        data: { usedAt: now },
-      });
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Password updated. You can now sign in.",
-    });
-  } catch (error) {
-    if (error.message === "INVALID_RESET_TOKEN") {
+    if (!isValidOneTimeToken(token)) {
       return res
         .status(400)
         .json({ message: "Reset link is invalid or expired" });
     }
 
-    console.error("Password reset completion failed:", error);
-    return res.status(500).json({ message: "Could not update password" });
-  }
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 12 characters and no more than 72 UTF-8 bytes",
+      });
+    }
+
+    const now = new Date();
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    try {
+      await database.$transaction(async (tx) => {
+        const resetToken = await tx.passwordResetToken.findUnique({
+          where: { tokenHash: hashOneTimeToken(token) },
+        });
+
+        if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
+          throw new Error("INVALID_RESET_TOKEN");
+        }
+
+        const consumed = await tx.passwordResetToken.updateMany({
+          where: {
+            id: resetToken.id,
+            usedAt: null,
+            expiresAt: { gt: now },
+          },
+          data: { usedAt: now },
+        });
+
+        if (consumed.count !== 1) throw new Error("INVALID_RESET_TOKEN");
+
+        await tx.user.update({
+          where: { id: resetToken.userId },
+          data: { passwordHash, tokenVersion: { increment: 1 } },
+        });
+
+        await tx.passwordResetToken.updateMany({
+          where: { userId: resetToken.userId, usedAt: null },
+          data: { usedAt: now },
+        });
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Password updated. You can now sign in.",
+      });
+    } catch (error) {
+      if (error.message === "INVALID_RESET_TOKEN") {
+        return res
+          .status(400)
+          .json({ message: "Reset link is invalid or expired" });
+      }
+
+      console.error("Password reset completion failed:", error);
+      return res.status(500).json({ message: "Could not update password" });
+    }
+  };
 }
+
+export const completePasswordReset = createCompletePasswordResetHandler();
+
+export function createLogoutHandler(database = prisma) {
+  return async function logout(req, res) {
+    try {
+      await database.user.update({
+        where: { id: req.user.id },
+        data: { tokenVersion: { increment: 1 } },
+        select: { id: true },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Session invalidated",
+      });
+    } catch (error) {
+      console.error("Session invalidation failed:", error);
+      return res.status(500).json({
+        message: "Could not invalidate the session",
+      });
+    }
+  };
+}
+
+export const logout = createLogoutHandler();
 
 export async function createUser(req, res) {
   try {
@@ -334,6 +379,12 @@ export async function createUser(req, res) {
       return res.status(400).json({
         message:
           "A valid email and password of at least 12 characters are required",
+      });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        message: "Password must not exceed 72 UTF-8 bytes",
       });
     }
 
@@ -375,62 +426,74 @@ export async function createUser(req, res) {
   }
 }
 
-export async function login(req, res) {
-  try {
-    const { email, password } = req.body;
+export function createLoginHandler(
+  database = prisma,
+  comparePassword = (password, passwordHash) =>
+    bcrypt.compare(password, passwordHash),
+  jwtConfigProvider = getJwtConfig,
+) {
+  return async function login(req, res) {
+    try {
+      const { email, password } = req.body;
 
-    if (typeof email !== "string" || typeof password !== "string") {
-      return res.status(400).json({
-        message: "Email and password are required",
+      if (typeof email !== "string" || typeof password !== "string") {
+        return res.status(400).json({
+          message: "Email and password are required",
+        });
+      }
+
+      const user = await database.user.findUnique({
+        where: {
+          email: email.trim().toLowerCase(),
+        },
+      });
+
+      if (!user) {
+        await comparePassword(password, DUMMY_PASSWORD_HASH);
+        return res.status(401).json({
+          message: "Invalid email or password",
+        });
+      }
+
+      const isValid = await comparePassword(password, user.passwordHash);
+
+      if (!isValid) {
+        return res.status(401).json({
+          message: "Invalid email or password",
+        });
+      }
+
+      const jwtConfig = jwtConfigProvider();
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          role: user.role,
+          tokenVersion: user.tokenVersion,
+        },
+        jwtConfig.secret,
+        {
+          expiresIn: JWT_EXPIRES_IN,
+          algorithm: jwtConfig.algorithm,
+        },
+      );
+
+      return res.status(200).json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("Login failed:", error);
+
+      return res.status(500).json({
+        message: "Login failed",
       });
     }
-
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email.trim().toLowerCase(),
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isValid) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "8h",
-        algorithm: "HS256",
-      },
-    );
-
-    return res.status(200).json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Login failed:", error);
-
-    return res.status(500).json({
-      message: "Login failed",
-    });
-  }
+  };
 }
+
+export const login = createLoginHandler();

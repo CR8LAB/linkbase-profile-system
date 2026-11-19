@@ -41,9 +41,7 @@ export function buildActionUrl(path, token) {
     throw new Error("PUBLIC_APP_URL must use HTTPS outside local development");
   }
 
-  if (!url.searchParams.has("token")) {
-    url.searchParams.set("token", token);
-  }
+  url.hash = new URLSearchParams({ token }).toString();
 
   return url.toString();
 }

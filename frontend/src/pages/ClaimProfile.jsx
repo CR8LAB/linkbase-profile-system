@@ -1,17 +1,30 @@
-import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useLayoutEffect, useReducer, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
+import {
+  actionTokenReducer,
+  readActionToken,
+  removeActionTokenFromUrl,
+  submitActionToken,
+} from "../utils/actionToken.js";
 import PasswordField from "./PasswordField.jsx";
 import "../App.css";
 
 function ClaimProfile() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token") || "";
+  const [token, dispatchToken] = useReducer(
+    actionTokenReducer,
+    window.location,
+    readActionToken,
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useLayoutEffect(() => {
+    removeActionTokenFromUrl(window.location, window.history);
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -25,17 +38,15 @@ function ClaimProfile() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/claim`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+      await submitActionToken({
+        endpoint: `${API_BASE_URL}/api/auth/claim`,
+        token,
+        password,
+        errorMessage: "Could not claim profile",
+        clearToken: () => dispatchToken({ type: "clear" }),
+        onSuccess: (data) =>
+          navigate("/", { replace: true, state: { message: data.message } }),
       });
-      const data = await response.json();
-
-      if (!response.ok)
-        throw new Error(data.message || "Could not claim profile");
-
-      navigate("/", { state: { message: data.message } });
     } catch (submitError) {
       setError(submitError.message);
     } finally {

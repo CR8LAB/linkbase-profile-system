@@ -8,18 +8,14 @@ import shortUrlRoutes from "./routes/shortUrlRoutes.js";
 import { redirectShortCode } from "./controllers/shortUrlController.js";
 import cors from "cors";
 import { getTrustProxySetting } from "./config/trustProxy.js";
+import { validateProductionUrlConfig } from "./config/productionUrls.js";
 
 // 1. Create the Express application
 const app = express();
 // Render connects through one reverse proxy. Do not trust forwarded headers
 // from direct local development requests.
 app.set("trust proxy", getTrustProxySetting());
-const allowedOrigins = (
-  process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://127.0.0.1:4173"
-)
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const { frontendOrigins: allowedOrigins } = validateProductionUrlConfig();
 
 // 2. Add JSON middleware
 app.use(

@@ -32,7 +32,11 @@ test("email validation and normalization are consistent", () => {
 test("password validation enforces minimum length and bcrypt byte limit", () => {
   assert.equal(isValidPassword("long-enough-password"), true);
   assert.equal(isValidPassword("short"), false);
+  assert.equal(isValidPassword("a".repeat(72)), true);
   assert.equal(isValidPassword("a".repeat(73)), false);
+  const unicodeCharacter = String.fromCodePoint(0x1f600);
+  assert.equal(isValidPassword(unicodeCharacter.repeat(18)), true);
+  assert.equal(isValidPassword(unicodeCharacter.repeat(19)), false);
   assert.equal(isValidPassword("😀".repeat(18)), true);
   assert.equal(isValidPassword("😀".repeat(19)), false);
 });
@@ -49,20 +53,20 @@ test("one-time tokens are high entropy and stored as one-way hashes", () => {
   assert.notEqual(tokenHash, firstToken);
 });
 
-test("claim and reset links require HTTPS outside localhost", () => {
+test("claim and reset links put tokens in fragments and require HTTPS outside localhost", () => {
   const previousUrl = process.env.PUBLIC_APP_URL;
 
   try {
     process.env.PUBLIC_APP_URL = "https://cards.example.com";
     assert.equal(
       buildActionUrl("/claim", "example-token"),
-      "https://cards.example.com/claim?token=example-token",
+      "https://cards.example.com/claim#token=example-token",
     );
 
     process.env.PUBLIC_APP_URL = "http://localhost:5173";
     assert.equal(
       buildActionUrl("/reset-password", "example-token"),
-      "http://localhost:5173/reset-password?token=example-token",
+      "http://localhost:5173/reset-password#token=example-token",
     );
 
     process.env.PUBLIC_APP_URL = "http://cards.example.com";

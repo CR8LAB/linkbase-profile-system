@@ -1,9 +1,11 @@
 import prisma from "../config/prisma.js";
 import { isValidShortCode } from "../services/shortCode.js";
+import { getConfiguredPublicAppUrl } from "../config/productionUrls.js";
 
 export function createShortUrlHandlers(
   profileLookup,
-  publicAppUrl = process.env.PUBLIC_APP_URL || "http://localhost:5173",
+  publicAppUrl = getConfiguredPublicAppUrl(),
+  isProduction = process.env.NODE_ENV === "production",
 ) {
   async function findProfile(shortCode) {
     if (!isValidShortCode(shortCode)) return null;
@@ -28,12 +30,21 @@ export function createShortUrlHandlers(
 
   async function redirectShortCode(req, res) {
     try {
+      const destinationBase = new URL(publicAppUrl);
+      if (
+        (isProduction && destinationBase.protocol !== "https:") ||
+        !["https:", "http:"].includes(destinationBase.protocol) ||
+        destinationBase.username ||
+        destinationBase.password
+      ) {
+        return res.status(500).send("Could not resolve short link");
+      }
       const profile = await findProfile(req.params.shortCode);
       if (!profile) return res.status(404).send("Short link not found");
 
       const destination = new URL(
         `/profile/${encodeURIComponent(profile.publicId)}`,
-        publicAppUrl,
+        destinationBase,
       );
 
       return res.redirect(302, destination.toString());

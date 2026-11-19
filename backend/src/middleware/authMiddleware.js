@@ -1,68 +1,88 @@
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
+import { getJwtConfig, JWT_EXPIRES_IN } from "../config/jwt.js";
 
 // Authenticate
 
-export async function authenticate(req, res, next) {
-  const authHeader = req.headers.authorization;
+export function createAuthenticate(database = prisma, jwtConfigProvider = getJwtConfig) {
+  return async function authenticate(req, res, next) {
+    const authHeader = req.headers.authorization;
 
-  if (!process.env.JWT_SECRET) {
-    console.error("JWT_SECRET is not configured");
-
-    return res.status(500).json({
-      message: "Authentication configuration error",
-    });
-  }
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({
-      message: "Authentication required",
-    });
-  }
-
-  const token = authHeader.slice(7);
-
-  let decoded;
-
-  try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ["HS256"],
-    });
-  } catch (error) {
-    return res.status(401).json({
-      message: "Invalid or expired token",
-    });
-  }
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        role: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        message: "User account no longer exists",
+    let jwtConfig;
+    try {
+      jwtConfig = jwtConfigProvider();
+    } catch {
+      return res.status(500).json({
+        message: "Authentication configuration error",
       });
     }
 
-    req.user = {
-      id: user.id,
-      role: user.role,
-    };
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
 
-    next();
-  } catch (error) {
-    console.error(error);
+    const token = authHeader.slice(7);
 
-    return res.status(500).json({
-      message: "Authentication failed",
-    });
-  }
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, jwtConfig.secret, {
+        algorithms: [jwtConfig.algorithm],
+        maxAge: JWT_EXPIRES_IN,
+      });
+    } catch (error) {
+      return res.status(401).json({
+        message: "Invalid or expired token",
+      });
+    }
+
+    if (!Number.isSafeInteger(decoded.tokenVersion) || decoded.tokenVersion < 0) {
+      return res.status(401).json({
+        message: "Invalid or expired token",
+      });
+    }
+
+    try {
+      const user = await database.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          role: true,
+          tokenVersion: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(401).json({
+          message: "User account no longer exists",
+        });
+      }
+
+      if (decoded.tokenVersion !== user.tokenVersion) {
+        return res.status(401).json({
+          message: "Invalid or expired token",
+        });
+      }
+
+      req.user = {
+        id: user.id,
+        role: user.role,
+      };
+
+      return next();
+    } catch (error) {
+      console.error(error);
+
+      return res.status(500).json({
+        message: "Authentication failed",
+      });
+    }
+  };
 }
+
+export const authenticate = createAuthenticate();
 // Authorize
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== "ADMIN") {

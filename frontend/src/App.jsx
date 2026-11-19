@@ -16,38 +16,42 @@ import CompanyManagement from "./pages/CompanyManagement.jsx";
 import CustomerManagement from "./pages/CustomerManagement.jsx";
 import RequireRole from "./components/RequireRole.jsx";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect.jsx";
+import SessionExpiryRedirect from "./components/SessionExpiryRedirect.jsx";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/claim" element={<ClaimProfile />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+    <>
+      <SessionExpiryRedirect />
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/claim" element={<ClaimProfile />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route element={<RequireRole role="ADMIN" />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/companies" element={<CompanyManagement />} />
-        <Route path="/admin/customers" element={<CustomerManagement />} />
-        <Route path="/admin/profiles" element={<Profiles />} />
-        <Route
-          path="/admin/profiles/:publicId/edit"
-          element={<EditProfile />}
-        />
-        <Route path="/admin/profiles/create" element={<CreateProfile />} />
-      </Route>
+        <Route element={<RequireRole role="ADMIN" />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/companies" element={<CompanyManagement />} />
+          <Route path="/admin/customers" element={<CustomerManagement />} />
+          <Route path="/admin/profiles" element={<Profiles />} />
+          <Route
+            path="/admin/profiles/:publicId/edit"
+            element={<EditProfile />}
+          />
+          <Route path="/admin/profiles/create" element={<CreateProfile />} />
+        </Route>
 
-      <Route element={<RequireRole role="CUSTOMER" />}>
-        <Route path="/dashboard" element={<CustomerDashboard />} />
-        <Route path="/dashboard/edit" element={<EditMyProfile />} />
-        <Route path="/dashboard/social-links" element={<ManageSocialLinks />} />
-      </Route>
+        <Route element={<RequireRole role="CUSTOMER" />}>
+          <Route path="/dashboard" element={<CustomerDashboard />} />
+          <Route path="/dashboard/edit" element={<EditMyProfile />} />
+          <Route path="/dashboard/social-links" element={<ManageSocialLinks />} />
+        </Route>
 
-      <Route path="/profile/:publicId" element={<PublicProfile />} />
-      <Route path="/:shortCode" element={<ShortUrlRedirect />} />
+        <Route path="/profile/:publicId" element={<PublicProfile />} />
+        <Route path="/:shortCode" element={<ShortUrlRedirect />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

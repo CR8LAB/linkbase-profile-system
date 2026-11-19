@@ -87,6 +87,7 @@ model User {
   email        String @unique
   passwordHash String
   role         Role   @default(CUSTOMER)
+  tokenVersion Int    @default(0)
 
   profiles Profile[]
 
@@ -118,6 +119,21 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@index([userId, expiresAt])
+}
+
+model StorageCleanupJob {
+  id          String   @id @default(cuid())
+  bucketName  String
+  objectName  String
+  attempts    Int      @default(0)
+  availableAt DateTime @default(now())
+  lockedUntil DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bucketName, objectName])
+  @@index([availableAt, lockedUntil])
 }
 
 enum Role {

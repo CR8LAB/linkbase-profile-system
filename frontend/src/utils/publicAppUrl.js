@@ -1,18 +1,12 @@
-const LOCAL_PUBLIC_APP_URL = "http://localhost:5173";
-const PRODUCTION_PUBLIC_APP_URL = "https://app.linkbase.co.za";
+import { resolvePublicAppUrl as validatePublicAppUrl } from "./productionUrlConfig.js";
 
-export function resolvePublicAppUrl(configuredUrl, isDevelopment = false) {
-  const value = configuredUrl?.trim() || (
-    isDevelopment ? LOCAL_PUBLIC_APP_URL : PRODUCTION_PUBLIC_APP_URL
-  );
-  return value.replace(/\/+$/, "");
-}
+export const resolvePublicAppUrl = validatePublicAppUrl;
 
 const viteEnvironment = import.meta.env || {};
-export const PUBLIC_APP_URL = resolvePublicAppUrl(
-  viteEnvironment.VITE_PUBLIC_APP_URL,
-  viteEnvironment.DEV,
-);
+const isViteRuntime = typeof import.meta.env !== "undefined";
+export const PUBLIC_APP_URL = isViteRuntime
+  ? resolvePublicAppUrl(viteEnvironment.VITE_PUBLIC_APP_URL, viteEnvironment.DEV)
+  : "https://app.linkbase.co.za";
 
 export function getPublicProfileUrl(publicId) {
   if (typeof publicId !== "string" || !publicId.trim()) {

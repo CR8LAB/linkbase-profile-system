@@ -5,16 +5,20 @@ import {
   createPdfDisplayNameUpdateHandler,
   createPdfDownloadHandler,
   createProfilePdfObjectName,
+  clearProfilePdfIfUnchanged,
+  persistProfilePdfIfUnchanged,
+  restoreProfilePdfIfEmpty,
   getPdfContentDisposition,
   getProfilePdfObjectName,
   getProfilePhotoObjectName,
+  getProfileLogoObjectName,
   getUploadPdfDisplayName,
-  removeProfileMedia,
   removeStoredProfilePdf,
   uploadAndReplaceProfilePdf,
   validatePdfDisplayName,
   validatePdfFile,
 } from "../src/services/profilePdf.js";
+import { getProfileMediaObjects } from "../src/services/storageCleanup.js";
 
 const validPdf = {
   originalname: "document.PDF",
@@ -197,39 +201,33 @@ test("PDF object keys are unique and constrained to their configured bucket and 
   );
 });
 
-test("profile media cleanup targets only the profile's generated photo and PDF objects", async () => {
-  const deleted = [];
-  const bucket = {
-    name: "linkbase-bucket",
-    file(name) {
-      return {
-        async delete(options) {
-          deleted.push({ name, options });
-        },
-      };
-    },
-  };
+test("profile media extraction includes only generated same-bucket photo, logo and PDF objects", () => {
   const profile = {
     id: "profile-1",
     publicId: "LB001",
     photoUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/LB001/a1b2-c3d4.webp",
+    logoUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/LB001/logos/a1b2-c3d4.png",
     pdfUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf",
   };
 
   assert.equal(
-    getProfilePhotoObjectName(profile.photoUrl, bucket.name, profile.publicId),
+    getProfilePhotoObjectName(profile.photoUrl, "linkbase-bucket", profile.publicId),
     "profiles/LB001/a1b2-c3d4.webp",
   );
-  await removeProfileMedia({ bucket, profile });
-  assert.deepEqual(deleted, [
-    { name: "profiles/LB001/a1b2-c3d4.webp", options: { ignoreNotFound: true } },
-    { name: "profiles/profile-1/pdf/a1b2-c3d4.pdf", options: { ignoreNotFound: true } },
+  assert.equal(
+    getProfileLogoObjectName(profile.logoUrl, "linkbase-bucket", profile.publicId),
+    "profiles/LB001/logos/a1b2-c3d4.png",
+  );
+  assert.deepEqual(getProfileMediaObjects(profile, "linkbase-bucket").map(({ objectName }) => objectName), [
+    "profiles/LB001/a1b2-c3d4.webp",
+    "profiles/LB001/logos/a1b2-c3d4.png",
+    "profiles/profile-1/pdf/a1b2-c3d4.pdf",
   ]);
 
   assert.equal(
     getProfilePhotoObjectName(
       "https://storage.googleapis.com/linkbase-bucket/profiles/other-profile/a1b2-c3d4.webp",
-      bucket.name,
+      "linkbase-bucket",
       profile.publicId,
     ),
     null,
@@ -237,31 +235,10 @@ test("profile media cleanup targets only the profile's generated photo and PDF o
   assert.equal(
     getProfilePhotoObjectName(
       "https://storage.googleapis.com/other-bucket/profiles/LB001/a1b2-c3d4.webp",
-      bucket.name,
+      "linkbase-bucket",
       profile.publicId,
     ),
     null,
-  );
-});
-
-test("profile media cleanup propagates storage failures", async () => {
-  const bucket = {
-    name: "linkbase-bucket",
-    file() {
-      return { async delete() { throw new Error("storage unavailable"); } };
-    },
-  };
-  await assert.rejects(
-    removeProfileMedia({
-      bucket,
-      profile: {
-        id: "profile-1",
-        publicId: "LB001",
-        photoUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/LB001/a1b2-c3d4.webp",
-        pdfUrl: null,
-      },
-    }),
-    /storage unavailable/,
   );
 });
 
@@ -289,18 +266,23 @@ test("replacement stores the new PDF before persisting it and deleting the old o
     profileId: "profile-1",
     publicId: "LB001",
     buffer: validPdf.buffer,
-    previousPdfUrl: oldUrl,
     pdfDisplayName: "replacement.pdf",
+    async createCleanupCandidate(_bucketName, objectName) { events.push(`candidate:${objectName}`); },
+    async activateCleanupCandidate(_bucketName, objectName) { events.push(`activate:${objectName}`); },
+    async processCleanup() { events.push("process-cleanup"); },
     async persist(pdfUrl, pdfDisplayName) {
       events.push("persist");
+      events.push(`enqueue-old:${oldUrl}`);
       return { publicId: "LB001", pdfUrl, pdfDisplayName };
     },
   });
   assert.match(result.pdfUrl, /\/api\/profiles\/LB001\/pdf\/download$/);
   assert.equal(result.pdfDisplayName, "replacement.pdf");
-  assert.match(events[0], /^save:/);
-  assert.equal(events[1], "persist");
-  assert.equal(events[2], "delete:profiles/profile-1/pdf/a1b2-c3d4.pdf");
+  assert.match(events[0], /^candidate:/);
+  assert.match(events[1], /^save:/);
+  assert.equal(events[2], "persist");
+  assert.match(events[3], /^enqueue-old:/);
+  assert.equal(events[4], "process-cleanup");
 });
 
 test("removal clears the profile URL before deleting only a same-bucket profile PDF", async () => {
@@ -309,32 +291,70 @@ test("removal clears the profile URL before deleting only a same-bucket profile 
     pdfUrl: "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf",
     pdfDisplayName: "Client Guide.pdf",
   };
-  const bucket = {
-    name: "linkbase-bucket",
-    file(name) { return { async delete() { events.push(`delete:${name}`); } }; },
-  };
-  const oldUrl = "https://storage.googleapis.com/linkbase-bucket/profiles/profile-1/pdf/a1b2-c3d4.pdf";
   await removeStoredProfilePdf({
-    bucket,
-    profileId: "profile-1",
-    previousPdfUrl: oldUrl,
     async clear() {
       profile.pdfUrl = null;
       profile.pdfDisplayName = null;
       events.push("clear");
+      return true;
     },
-    async restore() { events.push("restore"); },
+    async processCleanup() { events.push("process-cleanup"); },
   });
-  assert.deepEqual(events, ["clear", "delete:profiles/profile-1/pdf/a1b2-c3d4.pdf"]);
+  assert.deepEqual(events, ["clear", "process-cleanup"]);
   assert.deepEqual(profile, { pdfUrl: null, pdfDisplayName: null });
 
   events.length = 0;
   await removeStoredProfilePdf({
-    bucket,
-    profileId: "profile-1",
-    previousPdfUrl: "https://storage.googleapis.com/other-bucket/profiles/profile-1/pdf/file.pdf",
-    async clear() { events.push("clear"); },
-    async restore() { events.push("restore"); },
+    async clear() { events.push("clear"); return true; },
+    async processCleanup() { events.push("process-cleanup"); },
   });
-  assert.deepEqual(events, ["clear"]);
+  assert.deepEqual(events, ["clear", "process-cleanup"]);
+});
+
+test("PDF database transitions compare the previously read URL", async () => {
+  const calls = [];
+  const database = {
+    profile: {
+      async updateMany(args) {
+        calls.push(args);
+        return { count: 0 };
+      },
+    },
+  };
+
+  assert.equal(
+    await persistProfilePdfIfUnchanged(
+      database,
+      "LB001",
+      "old-url",
+      "new-url",
+      "new.pdf",
+    ),
+    null,
+  );
+  assert.equal(
+    (await clearProfilePdfIfUnchanged(database, "LB001", "old-url")).count,
+    0,
+  );
+  await restoreProfilePdfIfEmpty(database, "LB001", "old-url", "old.pdf");
+  assert.deepEqual(calls, [
+    { where: { publicId: "LB001", pdfUrl: "old-url" }, data: { pdfUrl: "new-url", pdfDisplayName: "new.pdf" } },
+    { where: { publicId: "LB001", pdfUrl: "old-url" }, data: { pdfUrl: null, pdfDisplayName: null } },
+    { where: { publicId: "LB001", pdfUrl: null }, data: { pdfUrl: "old-url", pdfDisplayName: "old.pdf" } },
+  ]);
+});
+
+test("a PDF removal conflict does not call storage deletion", async () => {
+  let storageDeletes = 0;
+  await assert.rejects(
+    removeStoredProfilePdf({
+      bucket: {
+        name: "linkbase-bucket",
+      },
+      async clear() { return false; },
+      async processCleanup() { storageDeletes += 1; },
+    }),
+    (error) => error.code === "PROFILE_PDF_CONFLICT",
+  );
+  assert.equal(storageDeletes, 0);
 });

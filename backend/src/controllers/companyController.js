@@ -12,7 +12,14 @@ export const deleteCompany = createCompanyDeletionHandler({
 
 export async function createCompany(req, res) {
   try {
-    const { name, logoUrl, fontFamily } = req.body;
+    const body = req.body || {};
+    const { name, fontFamily } = body;
+
+    if (hasNonEmptyImageUrl(body.logoUrl)) {
+      return res.status(400).json({
+        message: "logoUrl cannot be provided. Company logo uploads are not supported.",
+      });
+    }
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({
@@ -27,7 +34,6 @@ export async function createCompany(req, res) {
     const company = await prisma.company.create({
       data: {
         name: name.trim(),
-        logoUrl,
         fontFamily,
       },
     });
@@ -43,6 +49,11 @@ export async function createCompany(req, res) {
       message: "Failed to create company",
     });
   }
+}
+
+function hasNonEmptyImageUrl(value) {
+  if (value === undefined || value === null) return false;
+  return typeof value !== "string" || value.trim().length > 0;
 }
 
 export async function updateCompany(req, res) {

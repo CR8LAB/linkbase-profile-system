@@ -9,6 +9,7 @@ import {
   getMyProfile,
   uploadMyPhoto,
   uploadProfileLogo,
+  uploadProfileBackgroundImage,
   uploadProfilePdf,
   removeProfilePdf,
   redirectProfilePdf,
@@ -18,7 +19,7 @@ import {
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
 
-import upload from "../middleware/uploadMiddleware.js";
+import upload, { uploadBackgroundImage } from "../middleware/uploadMiddleware.js";
 import uploadPdf from "../middleware/pdfUploadMiddleware.js";
 import {
   getProfileVisitStatistics,
@@ -80,6 +81,15 @@ router.post(
   authorizeProfileOwner,
   upload.single("logo"),
   uploadProfileLogo,
+);
+
+router.post(
+  "/:publicId/background-image",
+  authenticate,
+  requireAdmin,
+  authorizeProfileOwner,
+  uploadBackgroundImage,
+  uploadProfileBackgroundImage,
 );
 
 export default router;

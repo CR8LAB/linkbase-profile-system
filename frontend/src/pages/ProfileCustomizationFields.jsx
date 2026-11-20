@@ -6,6 +6,9 @@ function ProfileCustomizationFields({
   profile,
   onChange,
   onImageSelect,
+  onBackgroundImageSelect,
+  backgroundImageBusy,
+  adminFields = false,
   uploadingImage,
   imageError,
   imageSuccess,
@@ -99,10 +102,68 @@ function ProfileCustomizationFields({
             />
           </div>
         </div>
+        {adminFields && (
+          <div className="profile-image-controls">
+            <div>
+              <label htmlFor="profile-background-image">Profile background image</label>
+              <input
+                id="profile-background-image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onBackgroundImageSelect}
+                disabled={Boolean(backgroundImageBusy || uploadingImage)}
+              />
+              <p className="profile-upload-note">JPG, PNG or WebP. Maximum 5 MB. A background color is used when no image is uploaded.</p>
+            </div>
+            {backgroundImageBusy && <p role="status">{backgroundImageBusy}</p>}
+            {profile.backgroundImageUrl && <p>Background image uploaded.</p>}
+          </div>
+        )}
         <p className="profile-upload-note">JPG, PNG or WebP. Maximum 5 MB.</p>
         {uploadingImage && <p role="status">Uploading {uploadingImage}...</p>}
         {imageError && <p className="error-message">{imageError}</p>}
         {imageSuccess && <p className="success-message">{imageSuccess}</p>}
+
+        {adminFields && (
+          <>
+            <h3>Location and Contact Actions</h3>
+            <div className="edit-form-group">
+              <label htmlFor="businessAddress">Business address</label>
+              <input
+                id="businessAddress"
+                name="businessAddress"
+                value={profile.businessAddress || ""}
+                onChange={onChange}
+                maxLength={500}
+                placeholder="Street, city, country"
+              />
+            </div>
+            <div className="edit-form-group">
+              <label htmlFor="googleReviewUrl">Google Review URL</label>
+              <input
+                id="googleReviewUrl"
+                type="url"
+                name="googleReviewUrl"
+                value={profile.googleReviewUrl || ""}
+                onChange={onChange}
+                maxLength={2048}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="edit-form-group">
+              <label htmlFor="whatsappNumber">WhatsApp number (international format)</label>
+              <input
+                id="whatsappNumber"
+                type="tel"
+                name="whatsappNumber"
+                value={profile.whatsappNumber || ""}
+                onChange={onChange}
+                maxLength={32}
+                placeholder="+442071838750"
+              />
+            </div>
+          </>
+        )}
 
         <h3>Profile PDF</h3>
         {profile.pdfUrl && (

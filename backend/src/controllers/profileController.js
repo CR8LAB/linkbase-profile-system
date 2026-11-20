@@ -7,6 +7,7 @@ import {
 } from "../services/profileValidation.js";
 import { assignProfileAtomically } from "../services/profileConcurrency.js";
 import { generateShortCode } from "../services/shortCode.js";
+import { validateProfileBackgroundImage } from "../services/profileBackgroundImage.js";
 import {
   createPdfDisplayNameUpdateHandler,
   createPdfDownloadHandler,
@@ -103,6 +104,12 @@ export async function createProfile(req, res) {
       });
     }
 
+    if (hasNonEmptyImageUrl(body.backgroundImageUrl)) {
+      return res.status(400).json({
+        message: "backgroundImageUrl cannot be provided. Upload a background image after creating the profile.",
+      });
+    }
+
     if (
       typeof publicId !== "string" ||
       !publicId.trim() ||
@@ -169,6 +176,11 @@ export async function updateProfile(req, res) {
   try {
     const { publicId } = req.params;
     const body = req.body || {};
+    if (Object.hasOwn(body, "backgroundImageUrl")) {
+      return res.status(400).json({
+        message: "backgroundImageUrl can only be changed through the background image upload endpoint",
+      });
+    }
     const existing = await prisma.profile.findUnique({
       where: { publicId },
       select: { userId: true },
@@ -218,8 +230,12 @@ export async function updateProfile(req, res) {
         phone: true,
         jobTitle: true,
         websiteUrl: true,
+        businessAddress: true,
+        googleReviewUrl: true,
+        whatsappNumber: true,
         photoUrl: true,
         logoUrl: true,
+        backgroundImageUrl: true,
         fontFamily: true,
         buttonColor: true,
         bodyTextColor: true,
@@ -270,8 +286,12 @@ export async function getProfile(req, res) {
         email: true,
         phone: true,
         websiteUrl: true,
+        businessAddress: true,
+        googleReviewUrl: true,
+        whatsappNumber: true,
         photoUrl: true,
         logoUrl: true,
+        backgroundImageUrl: true,
         fontFamily: true,
         buttonColor: true,
         bodyTextColor: true,
@@ -339,8 +359,12 @@ export async function getMyProfile(req, res) {
         email: true,
         phone: true,
         websiteUrl: true,
+        businessAddress: true,
+        googleReviewUrl: true,
+        whatsappNumber: true,
         photoUrl: true,
         logoUrl: true,
+        backgroundImageUrl: true,
         fontFamily: true,
         buttonColor: true,
         bodyTextColor: true,
@@ -496,7 +520,15 @@ async function uploadProfileImage(req, res, imageField) {
 
     const profile = await prisma.profile.findUnique({
       where: { publicId },
-      select: { id: true, publicId: true, fullName: true, userId: true, photoUrl: true, logoUrl: true },
+      select: {
+        id: true,
+        publicId: true,
+        fullName: true,
+        userId: true,
+        photoUrl: true,
+        logoUrl: true,
+        backgroundImageUrl: true,
+      },
     });
 
     if (!profile) {
@@ -545,6 +577,12 @@ export async function uploadMyPhoto(req, res) {
 
 export async function uploadProfileLogo(req, res) {
   return uploadProfileImage(req, res, "logoUrl");
+}
+
+export async function uploadProfileBackgroundImage(req, res) {
+  const validationError = validateProfileBackgroundImage(req.file);
+  if (validationError) return res.status(400).json({ message: validationError });
+  return uploadProfileImage(req, res, "backgroundImageUrl");
 }
 
 export async function uploadProfilePdf(req, res) {

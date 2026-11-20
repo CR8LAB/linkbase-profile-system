@@ -2,6 +2,7 @@ import ProfileQRCode from "../components/ProfileQRCode.jsx";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import { buildVCard } from "../utils/vCard.js";
+import { createGoogleMapsEmbedUrl, createWhatsAppUrl, getSafeGoogleReviewUrl } from "../utils/profileLinks.js";
 import {
   FaFacebookF,
   FaInstagram,
@@ -15,6 +16,8 @@ import {
   FaGlobe,
   FaAddressCard,
   FaFilePdf,
+  FaMapMarkerAlt,
+  FaStar,
 } from "react-icons/fa";
 
 const socialIcons = {
@@ -43,6 +46,10 @@ function PublicProfileCard({ profile, preview = false }) {
 
   const cardStyle = {
     backgroundColor: profile.backgroundColor || "#ffffff",
+    backgroundImage: profile.backgroundImageUrl ? `url("${profile.backgroundImageUrl}")` : "none",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
     fontFamily: profile.fontFamily || "Raleway, sans-serif",
     color: profile.bodyTextColor || "#101d3b",
   };
@@ -55,6 +62,9 @@ function PublicProfileCard({ profile, preview = false }) {
     backgroundColor: profile.saveContactButtonColor || "#101d3b",
     color: profile.saveContactButtonTextColor || "#ffffff",
   };
+  const mapsEmbedUrl = createGoogleMapsEmbedUrl(profile.businessAddress);
+  const reviewUrl = getSafeGoogleReviewUrl(profile.googleReviewUrl);
+  const whatsappUrl = createWhatsAppUrl(profile.whatsappNumber);
 
   return (
     <div
@@ -127,6 +137,20 @@ function PublicProfileCard({ profile, preview = false }) {
           </a>
         )}
 
+        {reviewUrl && (
+          <a href={reviewUrl} target="_blank" rel="noopener noreferrer" className="public-profile-button" style={buttonStyle}>
+            <FaStar aria-hidden="true" />
+            Leave a Review
+          </a>
+        )}
+
+        {whatsappUrl && (
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="public-profile-button" style={buttonStyle}>
+            <FaWhatsapp aria-hidden="true" />
+            WhatsApp
+          </a>
+        )}
+
         {!preview && profile.pdfUrl && (
           <a
             href={`${API_BASE_URL}${profile.pdfUrl}`}
@@ -182,6 +206,22 @@ function PublicProfileCard({ profile, preview = false }) {
               );
             })}
           </div>
+        )}
+
+        {mapsEmbedUrl && (
+          <section className="public-profile-location" aria-label="Business location">
+            <h2 style={bodyTextStyle}><FaMapMarkerAlt aria-hidden="true" /> Location</h2>
+            <p style={bodyTextStyle}>{profile.businessAddress}</p>
+            <div className="public-profile-map">
+              <iframe
+                src={mapsEmbedUrl}
+                title={`Map showing ${profile.businessAddress}`}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                allowFullScreen
+              />
+            </div>
+          </section>
         )}
 
       </div>

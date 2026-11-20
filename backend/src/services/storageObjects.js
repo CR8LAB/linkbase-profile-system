@@ -50,6 +50,20 @@ export function getProfileLogoObjectName(logoUrl, bucketName, publicId) {
   return objectName;
 }
 
+export function getProfileBackgroundObjectName(backgroundImageUrl, bucketName, publicId) {
+  const objectName = parseObjectUrl(backgroundImageUrl, bucketName);
+  if (!objectName) return null;
+  const parts = objectName.split("/");
+  if (
+    parts.length !== 4 ||
+    parts[0] !== "profiles" ||
+    parts[1] !== publicId ||
+    parts[2] !== "background" ||
+    !generatedFileName(parts[3], "jpg|png|webp")
+  ) return null;
+  return objectName;
+}
+
 export function getProfilePdfObjectName(pdfUrl, bucketName, profileId) {
   const objectName = parseObjectUrl(pdfUrl, bucketName);
   if (!objectName) return null;
@@ -68,13 +82,14 @@ export function getProfileMediaObjects(profile, bucketName) {
   const objects = [
     getProfilePhotoObjectName(profile.photoUrl, bucketName, profile.publicId),
     getProfileLogoObjectName(profile.logoUrl, bucketName, profile.publicId),
+    getProfileBackgroundObjectName(profile.backgroundImageUrl, bucketName, profile.publicId),
     getProfilePdfObjectName(profile.pdfUrl, bucketName, profile.id),
   ].filter(Boolean);
   return [...new Set(objects)].map((objectName) => ({ objectName, bucketName }));
 }
 
 export function isGeneratedProfileObjectName(objectName) {
-  return /^profiles\/[^/]+\/(?:[0-9a-f-]+\.(?:jpg|png|webp)|logos\/[0-9a-f-]+\.(?:jpg|png|webp)|pdf\/[0-9a-f-]+\.pdf)$/i.test(objectName);
+  return /^profiles\/[^/]+\/(?:[0-9a-f-]+\.(?:jpg|png|webp)|(?:logos|background)\/[0-9a-f-]+\.(?:jpg|png|webp)|pdf\/[0-9a-f-]+\.pdf)$/i.test(objectName);
 }
 
 export function getStorageObjectUrl(bucketName, objectName) {

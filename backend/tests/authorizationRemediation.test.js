@@ -141,9 +141,10 @@ test("photo, logo and PDF routes reject a foreign owner before parsing the uploa
       await withHttpServer(app, async (baseUrl) => {
         const token = customerToken();
         const uploadCases = [
-          ["photo", "photo", "text/plain"],
-          ["logo", "logo", "text/plain"],
-          ["pdf", "pdf", "text/plain"],
+          ["photo", "photo", "text/plain", "owner"],
+          ["logo", "logo", "text/plain", "owner"],
+          ["pdf", "pdf", "text/plain", "owner"],
+          ["background-image", "backgroundImage", "text/plain", "admin"],
         ];
 
         const unauthenticatedForm = new FormData();
@@ -159,7 +160,7 @@ test("photo, logo and PDF routes reject a foreign owner before parsing the uploa
         assert.equal(unauthenticatedResponse.status, 401);
         assert.equal(profileLookups, 0);
 
-        for (const [route, field, mimeType] of uploadCases) {
+        for (const [route, field, mimeType, authType] of uploadCases) {
           const form = new FormData();
           form.append(field, new Blob(["unauthorized upload"], { type: mimeType }), "payload.txt");
           const response = await fetch(`${baseUrl}/api/profiles/LB-B/${route}`, {
@@ -168,7 +169,8 @@ test("photo, logo and PDF routes reject a foreign owner before parsing the uploa
             body: form,
           });
           assert.equal(response.status, 403, route);
-          assert.match((await response.json()).message, /cannot edit this profile/i);
+          const message = (await response.json()).message;
+          assert.match(message, authType === "admin" ? /administrator/i : /cannot edit this profile/i);
         }
       });
     },

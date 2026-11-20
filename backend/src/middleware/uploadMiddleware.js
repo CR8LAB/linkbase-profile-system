@@ -19,3 +19,16 @@ const upload = multer({
 });
 
 export default upload;
+
+export function uploadBackgroundImage(req, res, next) {
+  upload.single("backgroundImage")(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({
+        message: error.code === "LIMIT_FILE_SIZE"
+          ? "Background image must be 5 MB or smaller"
+          : error.message || "Could not process background image upload",
+      });
+    }
+    return next();
+  });
+}

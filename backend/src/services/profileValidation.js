@@ -6,6 +6,9 @@ export const profileCustomizationFields = [
   "email",
   "phone",
   "websiteUrl",
+  "businessAddress",
+  "googleReviewUrl",
+  "whatsappNumber",
   "fontFamily",
   "bodyTextColor",
   "backgroundColor",
@@ -39,6 +42,19 @@ export function canCustomizeProfile(user, profile) {
     user?.role === "ADMIN" ||
     (user?.role === "CUSTOMER" && user.id === profile?.userId)
   );
+}
+
+export function normalizeWhatsAppNumber(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const compact = trimmed.replace(/[\s().-]/g, "");
+  const international = compact.startsWith("00")
+    ? `+${compact.slice(2)}`
+    : compact;
+  if (!/^\+[1-9]\d{7,14}$/.test(international)) return null;
+  return international;
 }
 
 const colorFields = [
@@ -104,6 +120,31 @@ export function validateProfileCustomization(
 
     const text = value ?? "";
 
+    if (field === "googleReviewUrl" && text) {
+      if (text.length > 2048) {
+        return { error: "Google review URL is too long" };
+      }
+      try {
+        const url = new URL(text);
+        if (url.protocol !== "https:" || !url.hostname || url.username || url.password) {
+          return { error: "Google review URL must be a valid HTTPS URL" };
+        }
+        updates[field] = url.href;
+      } catch {
+        return { error: "Google review URL must be a valid HTTPS URL" };
+      }
+      continue;
+    }
+
+    if (field === "whatsappNumber") {
+      const normalized = normalizeWhatsAppNumber(text);
+      if (normalized === null) {
+        return { error: "WhatsApp number must include a valid international country code" };
+      }
+      updates[field] = normalized;
+      continue;
+    }
+
     if (field === "email" && text && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
       return { error: "Email address is invalid" };
     }
@@ -119,7 +160,8 @@ export function validateProfileCustomization(
       }
     }
 
-    if (text.length > (field === "email" ? 254 : 500)) {
+    const maxLength = field === "email" ? 254 : field === "googleReviewUrl" ? 2048 : 500;
+    if (text.length > maxLength) {
       return { error: `${field} is too long` };
     }
 

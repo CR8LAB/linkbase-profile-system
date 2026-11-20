@@ -57,6 +57,7 @@ export async function getAdminProfiles(req, res) {
     const profiles = await prisma.profile.findMany({
       orderBy: { createdAt: "desc" },
       select: {
+        id: true,
         publicId: true,
         fullName: true,
         company: { select: { id: true, name: true } },

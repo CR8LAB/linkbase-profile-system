@@ -31,9 +31,13 @@ model Profile {
   jobTitle        String?
   email           String?
   websiteUrl      String?
+  businessAddress String?
+  googleReviewUrl String?
+  whatsappNumber  String?
   phone           String?
   photoUrl        String?
   logoUrl         String?
+  backgroundImageUrl String?
   fontFamily      String?
   buttonColor     String?
   bodyTextColor   String  @default("#101d3b")

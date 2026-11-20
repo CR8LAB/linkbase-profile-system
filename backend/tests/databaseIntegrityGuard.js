@@ -1,6 +1,6 @@
 const LOOPBACK_DATABASE_NAME = "linkbase_phase4a_test";
 const NEON_DATABASE_NAME = "neondb";
-const APPROVED_NEON_HOSTS = new Set([
+export const APPROVED_NEON_HOSTS = Object.freeze([
   "ep-broad-moon-b49xkrbf.c-6.us-east-2.aws.neon.tech",
   "ep-sparkling-tree-b4kpmofz.c-6.us-east-2.aws.neon.tech",
 ]);
@@ -21,7 +21,7 @@ export function validateTestDatabaseUrl(value) {
 
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   const isLoopback = ["127.0.0.1", "localhost", "::1"].includes(host);
-  const isApprovedNeon = APPROVED_NEON_HOSTS.has(host);
+  const isApprovedNeon = APPROVED_NEON_HOSTS.includes(host);
   if (!isLoopback && !isApprovedNeon) {
     throw new Error("PostgreSQL integration tests reject unapproved database hosts");
   }

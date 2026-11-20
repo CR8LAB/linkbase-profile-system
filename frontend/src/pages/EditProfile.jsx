@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
 import AdminPageLayout from "../components/AdminPageLayout.jsx";
 import ProfileQRCode from "../components/ProfileQRCode.jsx";
 import ProfileVisitStatistics from "../components/ProfileVisitStatistics.jsx";
+import SocialLinksEditor from "../components/SocialLinksEditor.jsx";
 import {
   DEFAULT_PDF_DISPLAY_NAME_INPUT,
   toPdfDisplayNameInput,
@@ -33,22 +34,30 @@ function EditProfile() {
       try {
         const token = sessionStorage.getItem("token");
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        const data = await response.json();
+        const [response, adminProfilesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/api/admin/profiles`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        const [data, adminProfilesData] = await Promise.all([
+          response.json(),
+          adminProfilesResponse.json(),
+        ]);
 
         if (!response.ok) {
           throw new Error(data.message || "Failed to load profile");
         }
+        if (!adminProfilesResponse.ok) {
+          throw new Error(adminProfilesData.message || "Failed to load profile details");
+        }
 
-        setProfile(data.profile);
+        const adminProfile = adminProfilesData.profiles?.find((item) => item.publicId === publicId);
+        if (!adminProfile) throw new Error("Profile not found in administrator profile list");
+
+        setProfile({ ...data.profile, id: adminProfile.id });
         setPdfDisplayNameInput(toPdfDisplayNameInput(data.profile.pdfDisplayName));
       } catch (error) {
         setError(error.message);
@@ -69,6 +78,10 @@ function EditProfile() {
     }));
   }
 
+  const handleSocialLinksChange = useCallback((socialLinks) => {
+    setProfile((previous) => previous ? { ...previous, socialLinks } : previous);
+  }, []);
+
   async function handleImageSelect(event, imageType) {
     const file = event.target.files?.[0];
     if (!file || !profile) return;
@@ -87,15 +100,17 @@ function EditProfile() {
     }
 
     const formData = new FormData();
-    formData.append(imageType === "photo" ? "photo" : "logo", file);
+    const fileField = imageType === "background" ? "backgroundImage" : imageType;
+    formData.append(fileField, file);
 
     try {
       setUploadingImage(
-        imageType === "photo" ? "profile image" : "company logo",
+        imageType === "photo" ? "profile image" : imageType === "logo" ? "company logo" : "background image",
       );
       const token = sessionStorage.getItem("token");
+      const route = imageType === "background" ? "background-image" : imageType;
       const response = await fetch(
-        `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}/${imageType}`,
+        `${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}/${route}`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
@@ -105,7 +120,7 @@ function EditProfile() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Image upload failed");
 
-      const field = imageType === "photo" ? "photoUrl" : "logoUrl";
+      const field = imageType === "photo" ? "photoUrl" : imageType === "logo" ? "logoUrl" : "backgroundImageUrl";
       setProfile((previous) => ({ ...previous, [field]: data.profile[field] }));
       setImageSuccess("Image uploaded successfully.");
     } catch (uploadError) {
@@ -238,7 +253,9 @@ function EditProfile() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(profile),
+          body: JSON.stringify(Object.fromEntries(
+            Object.entries(profile).filter(([field]) => field !== "backgroundImageUrl"),
+          )),
         },
       );
 
@@ -283,8 +300,11 @@ function EditProfile() {
       >
         <ProfileCustomizationFields
           profile={profile}
+          adminFields
           onChange={handleChange}
           onImageSelect={handleImageSelect}
+          onBackgroundImageSelect={(event) => handleImageSelect(event, "background")}
+          backgroundImageBusy={uploadingImage === "background image" ? "Uploading background image..." : ""}
           uploadingImage={uploadingImage}
           imageError={imageError}
           imageSuccess={imageSuccess}
@@ -315,6 +335,12 @@ function EditProfile() {
           </button>
         </div>
       </form>
+
+      <SocialLinksEditor
+        profileId={profile.id}
+        title="Manage Social Links"
+        onLinksChange={handleSocialLinksChange}
+      />
 
       <ProfileVisitStatistics publicId={publicId} />
 

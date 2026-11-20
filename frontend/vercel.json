@@ -6,7 +6,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://storage.googleapis.com blob:; connect-src 'self' https://linkbase-api.onrender.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://storage.googleapis.com blob:; connect-src 'self' https://linkbase-api.onrender.com; frame-src https://www.google.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         },
         {
           "key": "Referrer-Policy",

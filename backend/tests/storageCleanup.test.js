@@ -25,6 +25,7 @@ function makeProfile(overrides = {}) {
     userId: "customer-test-id",
     photoUrl: null,
     logoUrl: null,
+    backgroundImageUrl: null,
     pdfUrl: null,
     pdfDisplayName: null,
     ...overrides,
@@ -57,6 +58,7 @@ function createDatabase({ profile = null, otherProfiles = [], events = [] } = {}
         publicId: found.publicId,
         photoUrl: found.photoUrl,
         logoUrl: found.logoUrl,
+        backgroundImageUrl: found.backgroundImageUrl,
         pdfUrl: found.pdfUrl,
       }] : [];
     },
@@ -84,7 +86,7 @@ function createDatabase({ profile = null, otherProfiles = [], events = [] } = {}
       async findFirst({ where }) {
         const urls = new Set((where.OR || []).map((condition) => Object.values(condition)[0]));
         const found = [state.profile, ...state.otherProfiles].find((item) =>
-          item && [item.photoUrl, item.logoUrl, item.pdfUrl].some((value) => value && urls.has(value)));
+          item && [item.photoUrl, item.logoUrl, item.backgroundImageUrl, item.pdfUrl].some((value) => value && urls.has(value)));
         return found ? { id: found.id } : null;
       },
     },
@@ -153,24 +155,48 @@ function mockBucket({ events = [], failDelete = () => false, save = async () => 
   };
 }
 
-test("profile deletion queues photo, logo and PDF cleanup and preserves unrelated records", async () => {
+test("profile deletion queues photo, logo, background and PDF cleanup and preserves unrelated records", async () => {
   const photo = `profiles/LBTEST4B/${randomUUID()}.webp`;
   const logo = `profiles/LBTEST4B/logos/${randomUUID()}.png`;
+  const background = `profiles/LBTEST4B/background/${randomUUID()}.webp`;
   const pdf = `profiles/profile-test-id/pdf/${randomUUID()}.pdf`;
-  const database = createDatabase({ profile: makeProfile({ photoUrl: urlFor(photo), logoUrl: urlFor(logo), pdfUrl: urlFor(pdf) }) });
+  const database = createDatabase({ profile: makeProfile({ photoUrl: urlFor(photo), logoUrl: urlFor(logo), backgroundImageUrl: urlFor(background), pdfUrl: urlFor(pdf) }) });
   const events = [];
   const bucket = mockBucket({ events });
-  [photo, logo, pdf].forEach((objectName) => bucket.stored.add(objectName));
+  [photo, logo, background, pdf].forEach((objectName) => bucket.stored.add(objectName));
 
   const deletion = await deleteAdminProfileWithCleanup(database, bucketName, "LBTEST4B");
   assert.ok(deletion);
   assert.equal(database.state.profile, null);
-  assert.deepEqual(database.state.jobs.map(({ objectName }) => objectName).sort(), [photo, logo, pdf].sort());
+  assert.deepEqual(database.state.jobs.map(({ objectName }) => objectName).sort(), [photo, logo, background, pdf].sort());
 
   const result = await processStorageCleanupJobs({ database, bucket });
-  assert.equal(result.cleaned, 3);
-  assert.deepEqual(events.filter(({ action }) => action === "delete").map(({ objectName }) => objectName).sort(), [photo, logo, pdf].sort());
+  assert.equal(result.cleaned, 4);
+  assert.deepEqual(events.filter(({ action }) => action === "delete").map(({ objectName }) => objectName).sort(), [photo, logo, background, pdf].sort());
   assert.equal(database.state.jobs.length, 0);
+});
+
+test("background image replacement queues the old object and keeps the new URL referenced", async () => {
+  const oldObject = `profiles/LBTEST4B/background/${randomUUID()}.jpg`;
+  const profile = makeProfile({ backgroundImageUrl: urlFor(oldObject) });
+  const events = [];
+  const database = createDatabase({ profile, events });
+  const bucket = mockBucket({ events, failDelete: (objectName) => objectName === oldObject });
+  bucket.stored.add(oldObject);
+  const saved = await uploadAndReplaceProfileImage({
+    database,
+    bucket,
+    profile,
+    publicId: profile.publicId,
+    imageField: "backgroundImageUrl",
+    buffer: Buffer.from("synthetic image"),
+    mimetype: "image/webp",
+  });
+  assert.equal(saved.backgroundImageUrl, database.state.profile.backgroundImageUrl);
+  assert.notEqual(saved.backgroundImageUrl, urlFor(oldObject));
+  assert.deepEqual(database.state.jobs.map(({ objectName }) => objectName), [oldObject]);
+  assert.equal(bucket.stored.has(oldObject), true);
+  assert.ok(database.state.profile.backgroundImageUrl.includes("/background/"));
 });
 
 test("image replacement persists the new URL before cleaning the obsolete object", async () => {

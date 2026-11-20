@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  getProfileBackgroundObjectName,
   getProfileLogoObjectName,
   getProfileMediaObjects,
   getProfilePdfObjectName,
@@ -15,6 +16,7 @@ const MAX_RETRY_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH_SIZE = 25;
 
 export {
+  getProfileBackgroundObjectName,
   getProfileLogoObjectName,
   getProfileMediaObjects,
   getProfilePdfObjectName,
@@ -83,6 +85,9 @@ export function getProfileImageObjectName(imageUrl, bucketName, publicId, imageF
   if (imageField === "logoUrl") {
     return getProfileLogoObjectName(imageUrl, bucketName, publicId);
   }
+  if (imageField === "backgroundImageUrl") {
+    return getProfileBackgroundObjectName(imageUrl, bucketName, publicId);
+  }
   return null;
 }
 
@@ -98,7 +103,7 @@ export async function persistProfileAssetReplacement({
   newObjectName,
   pdfDisplayName,
 }) {
-  if (!["photoUrl", "logoUrl", "pdfUrl"].includes(imageField)) {
+  if (!["photoUrl", "logoUrl", "backgroundImageUrl", "pdfUrl"].includes(imageField)) {
     throw new Error("Unsupported profile asset field");
   }
   assertSafeObject(bucketName, newObjectName);
@@ -190,13 +195,15 @@ export async function uploadAndReplaceProfileImage({
 }) {
   const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
   const extension = extensions[mimetype];
-  if (!extension || !["photoUrl", "logoUrl"].includes(imageField)) {
+  if (!extension || !["photoUrl", "logoUrl", "backgroundImageUrl"].includes(imageField)) {
     throw new Error("Unsupported profile image upload");
   }
 
   const objectName = imageField === "photoUrl"
     ? `profiles/${publicId}/${randomUUID()}.${extension}`
-    : `profiles/${publicId}/logos/${randomUUID()}.${extension}`;
+    : imageField === "logoUrl"
+      ? `profiles/${publicId}/logos/${randomUUID()}.${extension}`
+      : `profiles/${publicId}/background/${randomUUID()}.${extension}`;
   await createStorageCleanupCandidate(database, bucket.name, objectName);
 
   try {
@@ -239,7 +246,7 @@ export async function uploadAndReplaceProfileImage({
 export async function deleteAdminProfileWithCleanup(database, bucketName, publicId) {
   return database.$transaction(async (transaction) => {
     const rows = await transaction.$queryRaw`
-      SELECT "id", "publicId", "photoUrl", "logoUrl", "pdfUrl"
+      SELECT "id", "publicId", "photoUrl", "logoUrl", "backgroundImageUrl", "pdfUrl"
       FROM "Profile"
       WHERE "publicId" = ${publicId}
       FOR UPDATE
@@ -326,6 +333,7 @@ export async function processStorageCleanupJobs({
           OR: [
             { photoUrl: objectUrl },
             { logoUrl: objectUrl },
+            { backgroundImageUrl: objectUrl },
             { pdfUrl: objectUrl },
           ],
         },

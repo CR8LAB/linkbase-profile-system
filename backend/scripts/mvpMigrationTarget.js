@@ -1,6 +1,7 @@
 const APPROVED_HOST = "ep-long-pine-b46ow0c0.c-6.us-east-2.aws.neon.tech";
 const APPROVED_DATABASE = "neondb";
-const ALLOWED_SSL_MODES = new Set(["require", "verify-ca", "verify-full"]);
+const REQUIRED_SSL_MODE = "require";
+const REQUIRED_SSL_ACCEPT_MODE = "strict";
 
 export function validateMvpMigrationTarget(connectionString) {
   if (typeof connectionString !== "string" || !connectionString.trim()) {
@@ -39,14 +40,23 @@ export function validateMvpMigrationTarget(connectionString) {
   const sslModes = url.searchParams.getAll("sslmode");
   if (
     sslModes.length !== 1 ||
-    !ALLOWED_SSL_MODES.has(sslModes[0].toLowerCase())
+    sslModes[0].toLowerCase() !== REQUIRED_SSL_MODE
   ) {
-    throw new Error("Prisma migrations require sslmode=require or stricter");
+    throw new Error("Prisma migrations require sslmode=require");
+  }
+
+  const sslAcceptModes = url.searchParams.getAll("sslaccept");
+  if (
+    sslAcceptModes.length !== 1 ||
+    sslAcceptModes[0].toLowerCase() !== REQUIRED_SSL_ACCEPT_MODE
+  ) {
+    throw new Error("Prisma migrations require sslaccept=strict");
   }
 
   return {
     hostname: APPROVED_HOST,
     databaseName: APPROVED_DATABASE,
-    sslMode: sslModes[0].toLowerCase(),
+    sslMode: REQUIRED_SSL_MODE,
+    sslAcceptMode: REQUIRED_SSL_ACCEPT_MODE,
   };
 }

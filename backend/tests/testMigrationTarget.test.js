@@ -11,7 +11,7 @@ import {
 
 const childHost = "ep-sparkling-tree-b4kpmofz.c-6.us-east-2.aws.neon.tech";
 const phase4aHost = "ep-broad-moon-b49xkrbf.c-6.us-east-2.aws.neon.tech";
-const operationalHost = "ep-long-pine-b46ow0c0.c-6.us-east-2.aws.neon.tech";
+const operationalHost = "ep-dawn-hat-b4oc4nhb.c-6.us-east-2.aws.neon.tech";
 const productionHost = "ep-production-branch.c-6.us-east-2.aws.neon.tech";
 const makeUrl = (host = childHost, database = "neondb", query = "sslmode=verify-full") =>
   `postgresql://fixture:private-test-password@${host}:5432/${database}?${query}`;

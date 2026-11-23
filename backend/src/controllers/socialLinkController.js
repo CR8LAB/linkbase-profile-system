@@ -1,4 +1,20 @@
 import prisma from "../config/prisma.js";
+import { lockProfileScope } from "../services/profileAccess.js";
+import { canCustomizeProfile, profileAccessSelect, profileManagementWhere } from "../services/profileValidation.js";
+
+async function writeSocialLinks(actor, profileId, write) {
+  if (actor.role === "ADMIN") return write(prisma);
+
+  return prisma.$transaction(async (tx) => {
+    await lockProfileScope(tx, { id: profileId });
+    const allowed = await tx.profile.findUnique({
+      where: { id: profileId, AND: profileManagementWhere(actor) },
+      select: { id: true },
+    });
+    if (!allowed) throw Object.assign(new Error("Profile access changed"), { code: "P2025" });
+    return write(tx);
+  });
+}
 
 export async function createSocialLink(req, res) {
   try {
@@ -46,7 +62,7 @@ export async function createSocialLink(req, res) {
       where: { id: profileId },
       select: {
         id: true,
-        userId: true,
+        ...profileAccessSelect,
       },
     });
 
@@ -57,27 +73,28 @@ export async function createSocialLink(req, res) {
     }
 
     // Check ownership or administrator access
-    if (req.user.role !== "ADMIN" && profile.userId !== req.user.id) {
+    if (!canCustomizeProfile(req.user, profile)) {
       return res.status(403).json({
         message: "You cannot manage links for this profile",
       });
     }
 
     // Create the social link
-    const socialLink = await prisma.socialLink.create({
+    const socialLink = await writeSocialLinks(req.user, profileId, (tx) => tx.socialLink.create({
       data: {
         profileId,
         platform,
         url,
         sortOrder: sortOrder ?? 0,
       },
-    });
+    }));
 
     return res.status(201).json({
       success: true,
       socialLink,
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile or link not found" });
     console.error(error);
 
     return res.status(500).json({
@@ -100,6 +117,7 @@ export async function getSocialLinks(req, res) {
       socialLinks,
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile or link not found" });
     console.error(error);
 
     return res.status(500).json({
@@ -161,7 +179,7 @@ export async function updateSocialLink(req, res) {
       include: {
         profile: {
           select: {
-            userId: true,
+            ...profileAccessSelect,
           },
         },
       },
@@ -175,8 +193,7 @@ export async function updateSocialLink(req, res) {
 
     // Check ownership
     if (
-      req.user.role !== "ADMIN" &&
-      socialLink.profile.userId !== req.user.id
+      !canCustomizeProfile(req.user, socialLink.profile)
     ) {
       return res.status(403).json({
         message: "You cannot edit this social link",
@@ -190,16 +207,17 @@ export async function updateSocialLink(req, res) {
     if (url !== undefined) updates.url = url;
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
-    const updatedLink = await prisma.socialLink.update({
-      where: { id },
+    const updatedLink = await writeSocialLinks(req.user, socialLink.profileId, (tx) => tx.socialLink.update({
+      where: { id, profileId: socialLink.profileId },
       data: updates,
-    });
+    }));
 
     return res.status(200).json({
       success: true,
       socialLink: updatedLink,
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile or link not found" });
     console.error(error);
 
     return res.status(500).json({
@@ -224,7 +242,7 @@ export async function deleteSocialLink(req, res) {
       include: {
         profile: {
           select: {
-            userId: true,
+            ...profileAccessSelect,
           },
         },
       },
@@ -238,23 +256,23 @@ export async function deleteSocialLink(req, res) {
 
     // Check ownership
     if (
-      req.user.role !== "ADMIN" &&
-      socialLink.profile.userId !== req.user.id
+      !canCustomizeProfile(req.user, socialLink.profile)
     ) {
       return res.status(403).json({
         message: "You cannot delete this social link",
       });
     }
 
-    await prisma.socialLink.delete({
-      where: { id },
-    });
+    await writeSocialLinks(req.user, socialLink.profileId, (tx) => tx.socialLink.delete({
+      where: { id, profileId: socialLink.profileId },
+    }));
 
     return res.status(200).json({
       success: true,
       message: "Social link deleted successfully",
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile or link not found" });
     console.error(error);
 
     return res.status(500).json({
@@ -280,7 +298,7 @@ export async function reorderSocialLinks(req, res) {
 
     const profile = await prisma.profile.findUnique({
       where: { id: profileId },
-      select: { id: true, userId: true },
+      select: { id: true, ...profileAccessSelect },
     });
 
     if (!profile) {
@@ -289,7 +307,7 @@ export async function reorderSocialLinks(req, res) {
       });
     }
 
-    if (req.user.role !== "ADMIN" && profile.userId !== req.user.id) {
+    if (!canCustomizeProfile(req.user, profile)) {
       return res.status(403).json({
         message: "You cannot reorder links for this profile",
       });
@@ -312,20 +330,19 @@ export async function reorderSocialLinks(req, res) {
       });
     }
 
-    await prisma.$transaction(
-      orderedIds.map((id, index) =>
-        prisma.socialLink.update({
-          where: { id },
-          data: { sortOrder: index },
-        }),
-      ),
-    );
+    const reorder = (tx) => orderedIds.map((id, index) => tx.socialLink.update({
+      where: { id, profileId },
+      data: { sortOrder: index },
+    }));
+    if (req.user.role === "ADMIN") await prisma.$transaction(reorder(prisma));
+    else await writeSocialLinks(req.user, profileId, (tx) => Promise.all(reorder(tx)));
 
     return res.status(200).json({
       success: true,
       message: "Social links reordered successfully",
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile or link not found" });
     console.error(error);
 
     return res.status(500).json({

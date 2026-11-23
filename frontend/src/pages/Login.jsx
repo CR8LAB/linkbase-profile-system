@@ -36,7 +36,7 @@ function Login() {
 
       sessionStorage.setItem("token", data.token);
 
-      if (data.user.role === "ADMIN") {
+      if (["ADMIN", "COMPANY_ADMIN"].includes(data.user.role)) {
         window.location.href = "/admin";
       } else {
         window.location.href = "/dashboard";

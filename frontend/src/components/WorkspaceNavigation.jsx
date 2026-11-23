@@ -9,6 +9,7 @@ const navigationByRole = {
     { label: "Customers", to: "/admin/customers" },
     { label: "Profiles", to: "/admin/profiles" },
   ],
+  COMPANY_ADMIN: [{ label: "Profiles", to: "/admin" }],
   CUSTOMER: [
     { label: "My Profile", to: "/dashboard", end: true },
     { label: "Edit Profile", to: "/dashboard/edit" },
@@ -73,12 +74,12 @@ function WorkspaceNavigation({ role }) {
     <header className="workspace-navigation">
       <Link
         className="workspace-navigation-brand"
-        to={role === "ADMIN" ? "/admin" : "/dashboard"}
+        to={role === "CUSTOMER" ? "/dashboard" : "/admin"}
       >
         LinkBase
       </Link>
       <nav
-        aria-label={`${role === "ADMIN" ? "Administrator" : "Customer"} navigation`}
+        aria-label={`${role === "CUSTOMER" ? "Customer" : "Administrator"} navigation`}
       >
         {navigationByRole[role].map((item) =>
           item.label === "Account" ? (

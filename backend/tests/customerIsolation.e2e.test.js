@@ -144,15 +144,22 @@ function fixtureStorage() {
 }
 
 function installPrismaFixture(store) {
+  const matchesProfile = (profile, where = {}) => Object.entries(where).every(([key, value]) => {
+    if (key === "AND") return matchesProfile(profile, value);
+    if (key === "OR") return value.some((condition) => matchesProfile(profile, condition));
+    if (key === "company") {
+      const company = store.companies.find((row) => row.id === profile.companyId);
+      return Boolean(company) && (company.centralisedManagement ?? false) === value.is.centralisedManagement;
+    }
+    return profile[key] === value;
+  });
   const findUser = ({ where }) =>
     store.users.find((user) =>
       where.id ? user.id === where.id : user.email === where.email,
     ) || null;
 
   const findProfile = ({ where, include, select }) => {
-    const profile = store.profiles.find((item) =>
-      where.publicId ? item.publicId === where.publicId : item.id === where.id,
-    );
+    const profile = store.profiles.find((item) => matchesProfile(item, where));
     if (!profile) return null;
     const result = clone(profile);
     if (include?.socialLinks || select?.socialLinks) {
@@ -179,14 +186,7 @@ function installPrismaFixture(store) {
     )],
     [prisma.user, "count", async ({ where } = {}) => store.users.filter((user) => !where?.role || user.role === where.role).length],
     [prisma.profile, "findUnique", async (args) => findProfile(args)],
-    [prisma.profile, "findFirst", async ({ where } = {}) => clone(
-      store.profiles.find((profile) =>
-        (!where?.userId || profile.userId === where.userId) &&
-        (!where?.companyId || profile.companyId === where.companyId) &&
-        (!where?.OR || where.OR.some((condition) =>
-          Object.entries(condition).some(([field, value]) => profile[field] === value))),
-      ) || null,
-    )],
+    [prisma.profile, "findFirst", async ({ where } = {}) => clone(store.profiles.find((profile) => matchesProfile(profile, where)) || null)],
     [prisma.profile, "findMany", async ({ where, include, select } = {}) => clone(
       store.profiles
         .filter((profile) => !where?.companyId || profile.companyId === where.companyId)
@@ -205,17 +205,13 @@ function installPrismaFixture(store) {
       (!where?.companyId || profile.companyId === where.companyId),
     ).length],
     [prisma.profile, "update", async ({ where, data }) => {
-      const profile = store.profiles.find((item) =>
-        where.publicId ? item.publicId === where.publicId : item.id === where.id,
-      );
+      const profile = store.profiles.find((item) => matchesProfile(item, where));
       if (!profile) throw Object.assign(new Error("Profile not found"), { code: "P2025" });
       Object.assign(profile, clone(data));
       return clone(profile);
     }],
     [prisma.profile, "updateMany", async ({ where, data }) => {
-      const matches = store.profiles.filter((profile) =>
-        Object.entries(where).every(([field, value]) => profile[field] === value),
-      );
+      const matches = store.profiles.filter((profile) => matchesProfile(profile, where));
       for (const profile of matches) Object.assign(profile, clone(data));
       return { count: matches.length };
     }],
@@ -349,6 +345,12 @@ function installPrismaFixture(store) {
     [prisma, "$transaction", async (operation) =>
       Array.isArray(operation) ? Promise.all(operation) : operation(prisma),
     ],
+    [prisma, "$queryRaw", async (sql, id) => {
+      const query = sql.join("?");
+      if (query.includes('FROM "Company"')) return store.companies.filter((company) => company.id === id);
+      const key = query.includes('WHERE "publicId"') ? "publicId" : "id";
+      return store.profiles.filter((profile) => profile[key] === id);
+    }],
   ];
 
   const originals = delegates.map(([target, key]) => [target, key, target[key]]);

@@ -73,3 +73,12 @@ export async function sendPasswordResetEmail({ email, token }) {
     text: `We received a request to reset the password for this LinkBase account. Use this one-time link within 30 minutes:\n\n${resetUrl}\n\nIf you did not request a reset, you can ignore this email.`,
   });
 }
+
+export async function sendCompanyAdminInvitation({ email, companyName, token }) {
+  const claimUrl = buildActionUrl("/claim-company-admin", token);
+  await sendActionEmail({
+    to: email,
+    subject: "Set up your LinkBase company administrator account",
+    text: `You have been invited to manage LinkBase profiles for ${companyName}. Create your password using this one-time link (expires in 24 hours):\n\n${claimUrl}\n\nIf you were not expecting this invitation, you can ignore this email.`,
+  });
+}

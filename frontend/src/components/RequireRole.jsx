@@ -28,13 +28,13 @@ function RequireRole({ role }) {
     );
   }
 
-  if (tokenRole !== role) {
+  if (![role].flat().includes(tokenRole)) {
     return (
-      <Navigate to={tokenRole === "ADMIN" ? "/admin" : "/dashboard"} replace />
+      <Navigate to={["ADMIN", "COMPANY_ADMIN"].includes(tokenRole) ? "/admin" : "/dashboard"} replace />
     );
   }
 
-  return <Outlet />;
+  return <Outlet context={{ role: tokenRole }} />;
 }
 
 export default RequireRole;

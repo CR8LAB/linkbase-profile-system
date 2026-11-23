@@ -76,9 +76,10 @@ export function createPdfDisplayNameUpdateHandler({
         return res.status(409).json({ message: "Upload a PDF before naming it" });
       }
 
-      const updated = await updateProfile(req.params.publicId, result.value);
+      const updated = await updateProfile(req.params.publicId, result.value, req.user);
       return res.status(200).json({ success: true, profile: updated });
     } catch (error) {
+      if (error.code === "P2025") return res.status(404).json({ message: "Profile not found" });
       console.error("Profile PDF display name update failed:", error);
       return res.status(500).json({ message: "Failed to update PDF display name" });
     }
@@ -161,12 +162,13 @@ export async function persistProfilePdfIfUnchanged(
   return { publicId, pdfUrl, pdfDisplayName };
 }
 
-export function clearProfilePdfIfUnchanged(database, publicId, expectedPdfUrl, expectedUserId) {
+export function clearProfilePdfIfUnchanged(database, publicId, expectedPdfUrl, expectedUserId, accessWhere) {
   return database.profile.updateMany({
     where: {
       publicId,
       pdfUrl: expectedPdfUrl,
       ...(expectedUserId === undefined ? {} : { userId: expectedUserId }),
+      ...(accessWhere && { AND: accessWhere }),
     },
     data: { pdfUrl: null, pdfDisplayName: null },
   });

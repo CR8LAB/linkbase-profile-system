@@ -50,6 +50,7 @@ export function createAuthenticate(database = prisma, jwtConfigProvider = getJwt
         select: {
           id: true,
           role: true,
+          companyId: true,
           tokenVersion: true,
         },
       });
@@ -69,6 +70,7 @@ export function createAuthenticate(database = prisma, jwtConfigProvider = getJwt
       req.user = {
         id: user.id,
         role: user.role,
+        ...(user.role === "COMPANY_ADMIN" && { companyId: user.companyId }),
       };
 
       return next();
@@ -92,4 +94,11 @@ export function requireAdmin(req, res, next) {
   }
 
   next();
+}
+
+export function requireProfileAdministrator(req, res, next) {
+  if (!["ADMIN", "COMPANY_ADMIN"].includes(req.user?.role)) {
+    return res.status(403).json({ message: "Administrator access required" });
+  }
+  return next();
 }

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
-import { validateMvpMigrationTarget } from "./scripts/mvpMigrationTarget.js";
+import { confirmMvpMigrationTarget } from "./scripts/mvpMigrationTarget.js";
 
 const args = process.argv.slice(2);
 // Plain client generation reads only the schema. TypedSQL generation needs a database.
@@ -10,8 +10,11 @@ const requiresMvpTarget =
 
 let datasource;
 if (!isClientGeneration) {
+  if (requiresMvpTarget && args.some((arg) => /^--(?:from-|to-)?url(?:=|$)/.test(arg))) {
+    throw new Error("Prisma MVP commands reject command-line database URL overrides");
+  }
   const url = env(requiresMvpTarget ? "MVP_DATABASE_URL" : "DATABASE_URL");
-  if (requiresMvpTarget) validateMvpMigrationTarget(url);
+  if (requiresMvpTarget) confirmMvpMigrationTarget(url);
   datasource = { url };
 }
 

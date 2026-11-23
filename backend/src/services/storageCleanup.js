@@ -9,6 +9,7 @@ import {
   isGeneratedProfileObjectName,
 } from "./storageObjects.js";
 import { clearProfilePdfIfUnchanged } from "./profilePdf.js";
+import { lockProfileScope } from "./profileAccess.js";
 
 const CANDIDATE_GRACE_MS = 60 * 60 * 1000;
 const LOCK_LEASE_MS = 2 * 60 * 1000;
@@ -97,6 +98,7 @@ export async function persistProfileAssetReplacement({
   publicId,
   profileId,
   expectedUserId,
+  accessWhere,
   imageField,
   expectedUrl,
   newUrl,
@@ -109,10 +111,11 @@ export async function persistProfileAssetReplacement({
   assertSafeObject(bucketName, newObjectName);
 
   return database.$transaction(async (transaction) => {
+    if (accessWhere && Object.keys(accessWhere).length) await lockProfileScope(transaction, { publicId });
     const data = { [imageField]: newUrl };
     if (imageField === "pdfUrl") data.pdfDisplayName = pdfDisplayName;
     const saved = await transaction.profile.updateMany({
-      where: { publicId, userId: expectedUserId, [imageField]: expectedUrl },
+      where: { publicId, userId: expectedUserId, [imageField]: expectedUrl, ...(accessWhere && { AND: accessWhere }) },
       data,
     });
     if (saved.count !== 1) return null;
@@ -145,14 +148,17 @@ export async function clearProfilePdfAndQueueCleanup({
   publicId,
   profileId,
   expectedUserId,
+  accessWhere,
   expectedUrl,
 }) {
   return database.$transaction(async (transaction) => {
+    if (accessWhere && Object.keys(accessWhere).length) await lockProfileScope(transaction, { publicId });
     const result = await clearProfilePdfIfUnchanged(
       transaction,
       publicId,
       expectedUrl,
       expectedUserId,
+      accessWhere,
     );
     if (result.count !== 1) return false;
 
@@ -190,6 +196,7 @@ export async function uploadAndReplaceProfileImage({
   profile,
   publicId,
   imageField,
+  accessWhere,
   buffer,
   mimetype,
 }) {
@@ -227,6 +234,7 @@ export async function uploadAndReplaceProfileImage({
       publicId,
       profileId: profile.id,
       expectedUserId: profile.userId,
+      accessWhere,
       imageField,
       expectedUrl: profile[imageField],
       newUrl,

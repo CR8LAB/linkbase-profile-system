@@ -11,6 +11,7 @@ import {
 } from "../controllers/authController.js";
 
 import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
+import { claimCompanyAdmin, inviteCompanyAdmin } from "../controllers/companyAdminInvitationController.js";
 import {
   claimRateLimit,
   invitationRateLimit,
@@ -35,6 +36,8 @@ router.post(
   inviteProfileClaim,
 );
 router.post("/claim", claimRateLimit, claimProfile);
+router.post("/companies/:companyId/admin-invitations", authenticate, requireAdmin, invitationRateLimit, inviteCompanyAdmin);
+router.post("/claim-company-admin", claimRateLimit, claimCompanyAdmin);
 router.post(
   "/password-reset/request",
   resetRequestRateLimit,

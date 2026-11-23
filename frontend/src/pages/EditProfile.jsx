@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import ProfileCustomizationFields from "./ProfileCustomizationFields.jsx";
 import AdminPageLayout from "../components/AdminPageLayout.jsx";
@@ -13,6 +13,8 @@ import {
 } from "../utils/pdfDisplayName.js";
 
 function EditProfile() {
+  const { role } = useOutletContext();
+  const companyAdmin = role === "COMPANY_ADMIN";
   const { publicId } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -30,43 +32,35 @@ function EditProfile() {
 
   // Load existing profile
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchProfile() {
       try {
         const token = sessionStorage.getItem("token");
 
-        const [response, adminProfilesResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE_URL}/api/admin/profiles`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        const [data, adminProfilesData] = await Promise.all([
-          response.json(),
-          adminProfilesResponse.json(),
-        ]);
+        const response = await fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(publicId)}/editor`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const data = await response.json();
 
         if (!response.ok) {
           throw new Error(data.message || "Failed to load profile");
         }
-        if (!adminProfilesResponse.ok) {
-          throw new Error(adminProfilesData.message || "Failed to load profile details");
-        }
-
-        const adminProfile = adminProfilesData.profiles?.find((item) => item.publicId === publicId);
-        if (!adminProfile) throw new Error("Profile not found in administrator profile list");
-
-        setProfile({ ...data.profile, id: adminProfile.id });
+        if (controller.signal.aborted) return;
+        setProfile(data.profile);
         setPdfDisplayNameInput(toPdfDisplayNameInput(data.profile.pdfDisplayName));
       } catch (error) {
-        setError(error.message);
+        if (!controller.signal.aborted) {
+          setProfile(null);
+          setError(error.message);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetchProfile();
+    return () => controller.abort();
   }, [publicId]);
 
   function handleChange(event) {
@@ -254,7 +248,7 @@ function EditProfile() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(Object.fromEntries(
-            Object.entries(profile).filter(([field]) => field !== "backgroundImageUrl"),
+            Object.entries(profile).filter(([field]) => field !== "backgroundImageUrl" && !(companyAdmin && field === "companyId")),
           )),
         },
       );
@@ -274,16 +268,16 @@ function EditProfile() {
     }
   }
 
-  if (loading) {
-    return <AdminPageLayout>Loading profile...</AdminPageLayout>;
+  if (loading || (profile && profile.publicId !== publicId)) {
+    return <AdminPageLayout role={role}>Loading profile...</AdminPageLayout>;
   }
 
   if (!profile) {
-    return <AdminPageLayout>{error || "Profile not found."}</AdminPageLayout>;
+    return <AdminPageLayout role={role}>{error || "Profile not found."}</AdminPageLayout>;
   }
 
   return (
-    <AdminPageLayout>
+    <AdminPageLayout role={role}>
       <header className="admin-header">
         <h2>Edit Profile</h2>
         <span>{publicId}</span>
@@ -329,7 +323,7 @@ function EditProfile() {
           <button
             type="button"
             className="cancel-button"
-            onClick={() => navigate("/admin/profiles")}
+            onClick={() => navigate(companyAdmin ? "/admin" : "/admin/profiles")}
           >
             Cancel
           </button>
@@ -344,7 +338,7 @@ function EditProfile() {
 
       <ProfileVisitStatistics publicId={publicId} />
 
-      <section
+      {!companyAdmin && <section
         className="admin-qr-management"
         aria-labelledby="profile-qr-title"
       >
@@ -353,7 +347,7 @@ function EditProfile() {
           Download digital versions or configure a physical manufacturing SVG.
         </p>
         <ProfileQRCode profile={profile} showManagementControls />
-      </section>
+      </section>}
     </AdminPageLayout>
   );
 }

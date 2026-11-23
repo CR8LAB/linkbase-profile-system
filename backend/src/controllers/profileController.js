@@ -3,9 +3,12 @@ import { bucket } from "../config/storage.js";
 import {
   canCustomizeProfile,
   customerProfileCustomizationFields,
+  profileAccessSelect,
+  profileManagementWhere,
   validateProfileCustomization,
 } from "../services/profileValidation.js";
 import { assignProfileAtomically } from "../services/profileConcurrency.js";
+import { lockProfileScope } from "../services/profileAccess.js";
 import { generateShortCode } from "../services/shortCode.js";
 import { validateProfileBackgroundImage } from "../services/profileBackgroundImage.js";
 import {
@@ -27,18 +30,26 @@ import {
   persistProfileAssetReplacement,
 } from "../services/storageCleanup.js";
 
+function writeProfile(actor, publicId, write) {
+  if (actor.role === "ADMIN") return write(prisma);
+  return prisma.$transaction(async (tx) => {
+    await lockProfileScope(tx, { publicId });
+    return write(tx);
+  });
+}
+
 export const updateProfilePdfDisplayName = createPdfDisplayNameUpdateHandler({
   findProfile: (publicId) =>
     prisma.profile.findUnique({
       where: { publicId },
-      select: { userId: true, pdfUrl: true },
+      select: { ...profileAccessSelect, pdfUrl: true },
     }),
-  updateProfile: (publicId, pdfDisplayName) =>
-    prisma.profile.update({
-      where: { publicId },
+  updateProfile: (publicId, pdfDisplayName, actor) =>
+    writeProfile(actor, publicId, (tx) => tx.profile.update({
+      where: { publicId, ...profileManagementWhere(actor) },
       data: { pdfDisplayName },
       select: { publicId: true, pdfDisplayName: true },
-    }),
+    })),
   canCustomize: canCustomizeProfile,
 });
 
@@ -55,7 +66,7 @@ export async function authorizeProfileOwner(req, res, next) {
   try {
     const profile = await prisma.profile.findUnique({
       where: { publicId: req.params.publicId },
-      select: { userId: true },
+      select: profileAccessSelect,
     });
 
     if (!profile) {
@@ -183,7 +194,7 @@ export async function updateProfile(req, res) {
     }
     const existing = await prisma.profile.findUnique({
       where: { publicId },
-      select: { userId: true },
+      select: profileAccessSelect,
     });
 
     if (!existing) {
@@ -194,10 +205,7 @@ export async function updateProfile(req, res) {
       return res.status(403).json({ message: "You cannot edit this profile" });
     }
 
-    const allowedFields =
-      req.user.role === "CUSTOMER"
-        ? customerProfileCustomizationFields
-        : undefined;
+    const allowedFields = req.user.role === "CUSTOMER" ? customerProfileCustomizationFields : undefined;
     const validation = validateProfileCustomization(body, allowedFields);
     if (validation.error) {
       return res.status(400).json({ message: validation.error });
@@ -219,8 +227,8 @@ export async function updateProfile(req, res) {
       updates.companyId = body.companyId.trim();
     }
 
-    const profile = await prisma.profile.update({
-      where: { publicId },
+    const profile = await writeProfile(req.user, publicId, (tx) => tx.profile.update({
+      where: { publicId, ...profileManagementWhere(req.user) },
       data: updates,
       select: {
         publicId: true,
@@ -249,7 +257,7 @@ export async function updateProfile(req, res) {
         pdfDisplayName: true,
         companyId: true,
       },
-    });
+    }));
 
     return res.status(200).json({
       success: true,
@@ -262,6 +270,7 @@ export async function updateProfile(req, res) {
       },
     });
   } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Profile not found" });
     console.error(error);
 
     return res.status(500).json({
@@ -272,13 +281,22 @@ export async function updateProfile(req, res) {
 
 ///////////////////////////////////////////////////
 
-export async function getProfile(req, res) {
+export function getProfile(req, res) {
+  return readProfile(req, res, false);
+}
+
+export function getManagedProfile(req, res) {
+  return readProfile(req, res, true);
+}
+
+async function readProfile(req, res, managed) {
   try {
     const { publicId } = req.params;
 
     const profile = await prisma.profile.findUnique({
-      where: { publicId },
+      where: { publicId, ...(managed ? profileManagementWhere(req.user) : {}) },
       select: {
+        ...(managed && { id: true }),
         publicId: true,
         shortCode: true,
         fullName: true,
@@ -345,10 +363,14 @@ export async function getProfile(req, res) {
 ////////////////////////////////////////
 
 export async function getMyProfile(req, res) {
+  if (req.user.role === "COMPANY_ADMIN") {
+    return res.status(403).json({ message: "Use the company profile dashboard" });
+  }
   try {
     const profile = await prisma.profile.findFirst({
       where: {
         userId: req.user.id,
+        ...profileManagementWhere(req.user),
       },
       select: {
         id: true,
@@ -452,6 +474,20 @@ export async function getCompanyProfiles(req, res) {
   }
 }
 
+export async function listManagedProfiles(req, res) {
+  try {
+    const profiles = await prisma.profile.findMany({
+      where: profileManagementWhere(req.user),
+      select: { publicId: true, fullName: true, jobTitle: true },
+      orderBy: { fullName: "asc" },
+    });
+    return res.json({ success: true, profiles });
+  } catch (error) {
+    console.error("Managed profile list failed:", error);
+    return res.status(500).json({ message: "Failed to retrieve profiles" });
+  }
+}
+
 //////////////////////////
 
 export async function assignProfile(req, res) {
@@ -524,7 +560,7 @@ async function uploadProfileImage(req, res, imageField) {
         id: true,
         publicId: true,
         fullName: true,
-        userId: true,
+        ...profileAccessSelect,
         photoUrl: true,
         logoUrl: true,
         backgroundImageUrl: true,
@@ -550,6 +586,7 @@ async function uploadProfileImage(req, res, imageField) {
       profile,
       publicId,
       imageField,
+      accessWhere: profileManagementWhere(req.user),
       buffer: req.file.buffer,
       mimetype: req.file.mimetype,
     });
@@ -591,7 +628,7 @@ export async function uploadProfilePdf(req, res) {
 
   const { publicId } = req.params;
   try {
-    const profile = await prisma.profile.findUnique({ where: { publicId } });
+    const profile = await prisma.profile.findUnique({ where: { publicId }, include: { company: true } });
     if (!profile) return res.status(404).json({ message: "Profile not found" });
     if (!canCustomizeProfile(req.user, profile)) {
       return res.status(403).json({ message: "You cannot edit this profile" });
@@ -615,6 +652,7 @@ export async function uploadProfilePdf(req, res) {
           publicId,
           profileId: profile.id,
           expectedUserId: profile.userId,
+          accessWhere: profileManagementWhere(req.user),
           imageField: "pdfUrl",
           expectedUrl: profile.pdfUrl,
           newUrl: pdfUrl,
@@ -640,7 +678,7 @@ export async function uploadProfilePdf(req, res) {
 export async function removeProfilePdf(req, res) {
   const { publicId } = req.params;
   try {
-    const profile = await prisma.profile.findUnique({ where: { publicId } });
+    const profile = await prisma.profile.findUnique({ where: { publicId }, include: { company: true } });
     if (!profile) return res.status(404).json({ message: "Profile not found" });
     if (!canCustomizeProfile(req.user, profile)) {
       return res.status(403).json({ message: "You cannot edit this profile" });
@@ -658,6 +696,7 @@ export async function removeProfilePdf(req, res) {
       publicId,
       profileId: profile.id,
       expectedUserId: profile.userId,
+      accessWhere: profileManagementWhere(req.user),
       expectedUrl: profile.pdfUrl,
     });
     if (!cleared) throw createPdfConflictError();

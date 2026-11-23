@@ -4,6 +4,8 @@ import {
   createProfile,
   updateProfile,
   getProfile,
+  getManagedProfile,
+  listManagedProfiles,
   assignProfile,
   updateMyProfile,
   getMyProfile,
@@ -17,7 +19,7 @@ import {
   authorizeProfileOwner,
 } from "../controllers/profileController.js";
 
-import { authenticate, requireAdmin } from "../middleware/authMiddleware.js";
+import { authenticate, requireAdmin, requireProfileAdministrator } from "../middleware/authMiddleware.js";
 
 import upload, { uploadBackgroundImage } from "../middleware/uploadMiddleware.js";
 import uploadPdf from "../middleware/pdfUploadMiddleware.js";
@@ -38,6 +40,8 @@ router.patch("/:publicId", authenticate, updateProfile);
 
 // CUSTOMER - MUST BE BEFORE PUBLIC PROFILE ROUTE
 router.get("/my-profile", authenticate, getMyProfile);
+router.get("/managed/list", authenticate, requireProfileAdministrator, listManagedProfiles);
+router.get("/:publicId/editor", authenticate, requireProfileAdministrator, getManagedProfile);
 
 router.post("/:publicId/visits", recordPublicProfileVisit);
 router.get("/:publicId/statistics", authenticate, getProfileVisitStatistics);
@@ -86,7 +90,7 @@ router.post(
 router.post(
   "/:publicId/background-image",
   authenticate,
-  requireAdmin,
+  requireProfileAdministrator,
   authorizeProfileOwner,
   uploadBackgroundImage,
   uploadProfileBackgroundImage,

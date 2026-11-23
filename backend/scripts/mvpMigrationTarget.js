@@ -1,5 +1,11 @@
-const APPROVED_HOST = "ep-long-pine-b46ow0c0.c-6.us-east-2.aws.neon.tech";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const APPROVED_ENDPOINT_ID = "ep-dawn-hat-b4oc4nhb";
+const APPROVED_HOST = `${APPROVED_ENDPOINT_ID}.c-6.us-east-2.aws.neon.tech`;
 const APPROVED_DATABASE = "neondb";
+const APPROVED_PROJECT_ID = "steep-term-83008496";
+const APPROVED_BRANCH_ID = "br-fragrant-cell-b4qjew0b";
 const REQUIRED_SSL_MODE = "require";
 const REQUIRED_SSL_ACCEPT_MODE = "strict";
 
@@ -36,6 +42,7 @@ export function validateMvpMigrationTarget(connectionString) {
   if (url.port && url.port !== "5432") {
     throw new Error("Prisma migrations reject unapproved database ports");
   }
+  if (url.hash) throw new Error("Prisma migrations reject connection URL fragments");
 
   const sslModes = url.searchParams.getAll("sslmode");
   if (
@@ -53,10 +60,40 @@ export function validateMvpMigrationTarget(connectionString) {
     throw new Error("Prisma migrations require sslaccept=strict");
   }
 
+  const options = new Set(["sslmode", "sslaccept", "schema", "channel_binding"]);
+  for (const key of url.searchParams.keys()) {
+    if (!options.has(key) || url.searchParams.getAll(key).length !== 1) {
+      throw new Error("Prisma migrations reject unapproved connection parameters");
+    }
+  }
+  if ((url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") ||
+      (url.searchParams.has("channel_binding") && url.searchParams.get("channel_binding") !== "require")) {
+    throw new Error("Prisma migrations reject unapproved schema or channel binding settings");
+  }
+
   return {
     hostname: APPROVED_HOST,
     databaseName: APPROVED_DATABASE,
+    projectId: APPROVED_PROJECT_ID,
+    branchId: APPROVED_BRANCH_ID,
+    endpointId: APPROVED_ENDPOINT_ID,
     sslMode: REQUIRED_SSL_MODE,
     sslAcceptMode: REQUIRED_SSL_ACCEPT_MODE,
   };
+}
+
+// Prisma loads this config before starting its engine. Keep the preflight
+// synchronous here so direct Prisma CLI invocations also check live identity.
+export function confirmMvpMigrationTarget(connectionString) {
+  validateMvpMigrationTarget(connectionString);
+  const verifier = fileURLToPath(new URL("./verifyMvpMigrationIdentity.js", import.meta.url));
+  const result = spawnSync(process.execPath, [verifier], {
+    env: { ...process.env, MVP_DATABASE_URL: connectionString },
+    stdio: "ignore",
+    timeout: 15000,
+    windowsHide: true,
+  });
+  if (result.status !== 0 || result.error) {
+    throw new Error("Prisma migrations could not verify the approved Neon project, branch, endpoint and database over TLS");
+  }
 }

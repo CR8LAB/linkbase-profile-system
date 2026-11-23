@@ -1,5 +1,5 @@
 import prisma from "../config/prisma.js";
-import { canCustomizeProfile } from "../services/profileValidation.js";
+import { canCustomizeProfile, profileAccessSelect } from "../services/profileValidation.js";
 import {
   createProfileStatisticsHandler,
   createPublicVisitHandler,
@@ -23,7 +23,7 @@ export const getProfileVisitStatistics = createProfileStatisticsHandler({
   findProfile: (publicId) =>
     prisma.profile.findUnique({
       where: { publicId },
-      select: { id: true, userId: true, visitCount: true },
+      select: { id: true, ...profileAccessSelect, visitCount: true },
     }),
   canViewProfile: canCustomizeProfile,
   countVisits: (profileId, start, end) =>

@@ -25,18 +25,21 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/claim" element={<ClaimProfile />} />
+        <Route path="/claim-company-admin" element={<ClaimProfile companyAdmin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        <Route element={<RequireRole role="ADMIN" />}>
+        <Route element={<RequireRole role={["ADMIN", "COMPANY_ADMIN"]} />}>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/companies" element={<CompanyManagement />} />
-          <Route path="/admin/customers" element={<CustomerManagement />} />
-          <Route path="/admin/profiles" element={<Profiles />} />
           <Route
             path="/admin/profiles/:publicId/edit"
             element={<EditProfile />}
           />
+        </Route>
+        <Route element={<RequireRole role="ADMIN" />}>
+          <Route path="/admin/companies" element={<CompanyManagement />} />
+          <Route path="/admin/customers" element={<CustomerManagement />} />
+          <Route path="/admin/profiles" element={<Profiles />} />
           <Route path="/admin/profiles/create" element={<CreateProfile />} />
         </Route>
 

@@ -24,6 +24,9 @@ export function createCompanyDeletionHandler({
       }
       throw new Error("Company deletion returned an unexpected status");
     } catch (error) {
+      if (error.code === "P2003") {
+        return res.status(409).json({ message: "This company has an associated administrator" });
+      }
       console.error("Company deletion failed:", error);
       return res.status(500).json({ message: "Failed to delete company" });
     }

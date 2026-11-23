@@ -1,3 +1,5 @@
+import { individualClaimWhere } from "./profileAccess.js";
+
 export const profileFontFamilies = ["Raleway", "Arial", "Roboto", "Montserrat"];
 
 export const profileCustomizationFields = [
@@ -37,11 +39,32 @@ export const customerProfileCustomizationFields = [
   "socialLinkIconColor",
 ];
 
+export const profileAccessSelect = {
+  userId: true,
+  companyId: true,
+  company: { select: { centralisedManagement: true } },
+};
+
 export function canCustomizeProfile(user, profile) {
-  return (
-    user?.role === "ADMIN" ||
-    (user?.role === "CUSTOMER" && user.id === profile?.userId)
-  );
+  if (user?.role === "ADMIN") return true;
+  if (user?.role === "COMPANY_ADMIN") {
+    return Boolean(user.companyId && user.companyId === profile?.companyId && profile.company?.centralisedManagement === true);
+  }
+  return user?.role === "CUSTOMER" && typeof user.id === "string" && user.id === profile?.userId && profile.company?.centralisedManagement !== true;
+}
+
+export function profileManagementWhere(user) {
+  if (user?.role === "ADMIN") return {};
+  if (user?.role === "COMPANY_ADMIN" && user.companyId) {
+    return { companyId: user.companyId, company: { is: { centralisedManagement: true } } };
+  }
+  if (user?.role === "CUSTOMER" && typeof user.id === "string") {
+    return {
+      userId: user.id,
+      ...individualClaimWhere,
+    };
+  }
+  return { id: { in: [] } };
 }
 
 export function normalizeWhatsAppNumber(value) {

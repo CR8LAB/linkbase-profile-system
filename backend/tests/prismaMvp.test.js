@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { executeMvpMigration, redactPrismaOutput } from "../scripts/prismaMvp.js";
 
-const host = "ep-long-pine-b46ow0c0.c-6.us-east-2.aws.neon.tech";
+const host = "ep-dawn-hat-b4oc4nhb.c-6.us-east-2.aws.neon.tech";
 const targetUrl = `postgresql://mvp-user:mvp-password@${host}:5432/neondb?sslmode=require&sslaccept=strict`;
 
 test("MVP wrapper captures sanitized CLI stdout, stderr, exit code and engine process errors", () => {

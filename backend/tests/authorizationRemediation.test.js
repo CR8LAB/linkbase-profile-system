@@ -102,6 +102,8 @@ test("social-link creation still accepts HTTP and HTTPS for the assigned custome
   let creates = 0;
   await withStubs(
     [
+      [prisma, "$transaction", async (work) => work(prisma)],
+      [prisma, "$queryRaw", async () => [{ id: "profile-a", companyId: null }]],
       [prisma.profile, "findUnique", async () => ({ id: "profile-a", userId: "customer-a" })],
       [prisma.socialLink, "create", async () => { creates += 1; return { id: `link-${creates}` }; }],
     ],
@@ -198,7 +200,8 @@ test("PATCH /reorder reaches the reorder handler and validates the complete link
         updates.push({ where, data });
         return Promise.resolve({ id: where.id, ...data });
       }],
-      [prisma, "$transaction", async (operations) => Promise.all(operations)],
+      [prisma, "$transaction", async (work) => work(prisma)],
+      [prisma, "$queryRaw", async () => [{ id: "profile-a", companyId: null }]],
     ],
     async () => {
       await withHttpServer(app, async (baseUrl) => {
@@ -229,7 +232,7 @@ test("PATCH /reorder reaches the reorder handler and validates the complete link
 
   assert.equal(updateCalls, 2);
   assert.deepEqual(updates, [
-    { where: { id: "link-2" }, data: { sortOrder: 0 } },
-    { where: { id: "link-1" }, data: { sortOrder: 1 } },
+    { where: { id: "link-2", profileId: "profile-a" }, data: { sortOrder: 0 } },
+    { where: { id: "link-1", profileId: "profile-a" }, data: { sortOrder: 1 } },
   ]);
 });

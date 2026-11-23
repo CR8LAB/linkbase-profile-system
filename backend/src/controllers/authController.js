@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
 import { getJwtConfig, JWT_EXPIRES_IN } from "../config/jwt.js";
 import jwt from "jsonwebtoken";
+import { individualClaimWhere, lockProfileScope } from "../services/profileAccess.js";
 import {
   createOneTimeToken,
   emailsMatch,
@@ -33,13 +34,15 @@ export async function inviteProfileClaim(req, res) {
 
   try {
     const invitation = await prisma.$transaction(async (tx) => {
+      await lockProfileScope(tx, { publicId });
       const profile = await tx.profile.findUnique({
         where: { publicId },
-        select: { id: true, fullName: true, email: true, userId: true },
+        select: { id: true, fullName: true, email: true, userId: true, company: { select: { centralisedManagement: true } } },
       });
 
       if (!profile) throw new Error("PROFILE_NOT_FOUND");
-      if (profile.userId) throw new Error("PROFILE_ALREADY_CLAIMED");
+      if (profile.company?.centralisedManagement) throw new Error("CENTRALISED_MANAGEMENT");
+      if (profile.userId !== null) throw new Error("PROFILE_ALREADY_CLAIMED");
       if (!emailsMatch(profile.email, normalizedEmail)) {
         throw new Error("PROFILE_EMAIL_MISMATCH");
       }
@@ -104,6 +107,10 @@ export async function inviteProfileClaim(req, res) {
       });
     }
 
+    if (error.message === "CENTRALISED_MANAGEMENT") {
+      return res.status(403).json({ message: "Individual claims are disabled for this company" });
+    }
+
     if (
       ["PROFILE_ALREADY_CLAIMED", "ACCOUNT_ALREADY_EXISTS"].includes(
         error.message,
@@ -148,12 +155,14 @@ export async function claimProfile(req, res) {
         throw new Error("INVALID_CLAIM_TOKEN");
       }
 
+      await lockProfileScope(tx, { id: claimToken.profileId });
+
       const profile = await tx.profile.findUnique({
         where: { id: claimToken.profileId },
-        select: { email: true },
+        select: { email: true, company: { select: { centralisedManagement: true } } },
       });
 
-      if (!profile || !emailsMatch(profile.email, claimToken.email)) {
+      if (!profile || profile.company?.centralisedManagement || !emailsMatch(profile.email, claimToken.email)) {
         throw new Error("INVALID_CLAIM_TOKEN");
       }
 
@@ -178,7 +187,7 @@ export async function claimProfile(req, res) {
       });
 
       const assigned = await tx.profile.updateMany({
-        where: { id: claimToken.profileId, userId: null },
+        where: { id: claimToken.profileId, userId: null, ...individualClaimWhere },
         data: { userId: user.id },
       });
 

@@ -10,7 +10,7 @@ import {
 import PasswordField from "./PasswordField.jsx";
 import "../App.css";
 
-function ClaimProfile() {
+function ClaimProfile({ companyAdmin = false }) {
   const navigate = useNavigate();
   const [token, dispatchToken] = useReducer(
     actionTokenReducer,
@@ -39,10 +39,10 @@ function ClaimProfile() {
 
     try {
       await submitActionToken({
-        endpoint: `${API_BASE_URL}/api/auth/claim`,
+        endpoint: `${API_BASE_URL}/api/auth/${companyAdmin ? "claim-company-admin" : "claim"}`,
         token,
         password,
-        errorMessage: "Could not claim profile",
+        errorMessage: companyAdmin ? "Could not create company administrator account" : "Could not claim profile",
         clearToken: () => dispatchToken({ type: "clear" }),
         onSuccess: (data) =>
           navigate("/", { replace: true, state: { message: data.message } }),
@@ -61,7 +61,7 @@ function ClaimProfile() {
           <h1>LinkBase</h1>
         </div>
         <div className="login-heading">
-          <h2>Claim Your Profile</h2>
+          <h2>{companyAdmin ? "Set Up Your Company Administrator Account" : "Claim Your Profile"}</h2>
           <p>
             This invitation verifies the email address selected by your
             administrator.

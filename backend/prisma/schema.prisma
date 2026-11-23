@@ -18,6 +18,9 @@ model Company {
   fontFamily String  @default("Raleway")
 
   profiles Profile[]
+  centralisedManagement Boolean @default(false)
+  administrator User?
+  adminInvitations CompanyAdminInvitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,6 +95,8 @@ model User {
   passwordHash String
   role         Role   @default(CUSTOMER)
   tokenVersion Int    @default(0)
+  companyId    String? @unique
+  company      Company? @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   profiles Profile[]
 
@@ -111,6 +116,18 @@ model ProfileClaimToken {
   createdAt DateTime  @default(now())
 
   @@index([profileId, expiresAt])
+}
+
+model CompanyAdminInvitation {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  email     String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([companyId])
 }
 
 model PasswordResetToken {
@@ -143,4 +160,5 @@ model StorageCleanupJob {
 enum Role {
   ADMIN
   CUSTOMER
+  COMPANY_ADMIN
 }

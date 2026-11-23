@@ -140,6 +140,7 @@ test("existing profile photo and logo upload handlers still write to GCS", async
     publicId: "LB2001",
     fullName: "Ada Lovelace",
     userId: "customer-1",
+    companyId: null,
     photoUrl: null,
     logoUrl: null,
   };
@@ -163,6 +164,7 @@ test("existing profile photo and logo upload handlers still write to GCS", async
           return { count: 1 };
         }],
         [prisma, "$transaction", async (work) => work(prisma)],
+        [prisma, "$queryRaw", async () => [profileRecord]],
         [prisma.storageCleanupJob, "create", async ({ data }) => {
           cleanupJobs.push({ id: `job-${cleanupJobs.length}`, attempts: 0, lockedUntil: null, ...data });
           return cleanupJobs.at(-1);

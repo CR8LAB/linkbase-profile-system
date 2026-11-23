@@ -152,8 +152,9 @@ test("Prisma config invocation rejects any command options besides its pinned co
 });
 
 test("existing production migration guard behavior and npm scripts remain unchanged", async () => {
-  assert.equal(validateMvpMigrationTarget(makeUrl(operationalHost)).hostname, operationalHost);
-  assert.throws(() => validateMvpMigrationTarget(makeUrl(childHost)));
+  const mvpTls = "sslmode=require&sslaccept=strict";
+  assert.equal(validateMvpMigrationTarget(makeUrl(operationalHost, "neondb", mvpTls)).hostname, operationalHost);
+  assert.throws(() => validateMvpMigrationTarget(makeUrl(childHost, "neondb", mvpTls)), /unapproved database hosts/);
   const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   assert.equal(packageJson.scripts["migrate:mvp:status"], "node scripts/prismaMvp.js migrate status");
   assert.equal(packageJson.scripts["migrate:mvp:deploy"], "node scripts/prismaMvp.js migrate deploy");

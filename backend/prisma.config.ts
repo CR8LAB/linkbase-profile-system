@@ -2,17 +2,17 @@ import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 import { validateMvpMigrationTarget } from "./scripts/mvpMigrationTarget.js";
 
-const isMigrationCommand = process.argv.includes("migrate");
+const args = process.argv.slice(2);
+// Plain client generation reads only the schema. TypedSQL generation needs a database.
+const isClientGeneration = args[0] === "generate" && !args.includes("--sql");
 const requiresMvpTarget =
-  isMigrationCommand || process.env.PRISMA_MVP_TARGET === "1";
+  args.includes("migrate") || process.env.PRISMA_MVP_TARGET === "1";
 
-let datasourceUrl;
-if (requiresMvpTarget) {
-  const mvpDatabaseUrl = env("MVP_DATABASE_URL");
-  validateMvpMigrationTarget(mvpDatabaseUrl);
-  datasourceUrl = mvpDatabaseUrl;
-} else {
-  datasourceUrl = env("DATABASE_URL");
+let datasource;
+if (!isClientGeneration) {
+  const url = env(requiresMvpTarget ? "MVP_DATABASE_URL" : "DATABASE_URL");
+  if (requiresMvpTarget) validateMvpMigrationTarget(url);
+  datasource = { url };
 }
 
 export default defineConfig({
@@ -20,7 +20,5 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
-  datasource: {
-    url: datasourceUrl,
-  },
+  datasource,
 });

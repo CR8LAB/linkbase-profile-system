@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
+import { SESSION_CHANGED_EVENT } from "../utils/sessionExpiry.js";
 
 const navigationByRole = {
   ADMIN: [
@@ -57,6 +58,7 @@ function WorkspaceNavigation({ role }) {
         "Local logout succeeded, but server-side session revocation could not be confirmed.";
     } finally {
       sessionStorage.removeItem("token");
+      window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
       navigate(
         "/",
         {

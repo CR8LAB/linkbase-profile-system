@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import test from "node:test";
 import { getTokenSession } from "../src/utils/tokenSession.js";
 import {
@@ -70,6 +71,26 @@ test("unauthenticated login 401 does not clear or redirect a session", async () 
   await fetcher("https://api.example.com/api/auth/login", { method: "POST" });
   assert.equal(expiredCount, 0);
   assert.equal(values.get("token"), "existing-token");
+});
+
+test("a delayed 401 from an older token does not discard a renewed session", async () => {
+  const values = new Map([["token", "old-token"]]);
+  let completeResponse;
+  const fetcher = createSessionAwareFetch(
+    () => new Promise((resolve) => { completeResponse = resolve; }),
+    {
+      storage: { getItem: (key) => values.get(key), removeItem: (key) => values.delete(key) },
+      apiBaseUrl: "https://api.example.com",
+      onExpired: () => assert.fail("A renewed session was treated as expired"),
+    },
+  );
+  const response = fetcher("https://api.example.com/api/profiles/my-profile", {
+    headers: { Authorization: "Bearer old-token" },
+  });
+  values.set("token", "renewed-token");
+  completeResponse({ status: 401 });
+  await response;
+  assert.equal(values.get("token"), "renewed-token");
 });
 
 test("logout handles its own 401 response without a competing expiry redirect", async () => {

@@ -129,9 +129,11 @@ function Profiles() {
   }
 
   async function deleteProfile(profile) {
-    const assignedWarning = profile.user
-      ? "\n\nThis profile is assigned to a customer. Deleting it will remove their public profile, but their login account will remain active."
-      : "";
+    const assignedWarning = profile.company?.centralisedManagement
+      ? "\n\nThis will remove the company's public profile. Any existing customer login account will remain active."
+      : profile.user
+        ? "\n\nThis profile is assigned to a customer. Deleting it will remove their public profile, but their login account will remain active."
+        : "";
     const confirmed = window.confirm(
       `Delete ${profile.fullName} (${profile.publicId})?${assignedWarning}`,
     );
@@ -250,18 +252,21 @@ function Profiles() {
 
                   <span
                     className={
-                      profile.user ? "status-assigned" : "status-unassigned"
+                      profile.company?.centralisedManagement || profile.user ? "status-assigned" : "status-unassigned"
                     }
                   >
-                    {profile.user ? "Assigned" : "Unassigned"}
+                    {profile.company?.centralisedManagement ? "Company managed" : profile.user ? "Assigned" : "Unassigned"}
                   </span>
                 </div>
 
-                {profile.user && (
-                  <p className="assigned-email">{profile.user.email}</p>
-                )}
+                {profile.company?.centralisedManagement ? (
+                  <p className="assigned-email">
+                    {profile.company.name}
+                    {profile.company.administrator && <> · {profile.company.administrator.email}</>}
+                  </p>
+                ) : profile.user && <p className="assigned-email">{profile.user.email}</p>}
 
-                {!profile.user && (
+                {!profile.company?.centralisedManagement && !profile.user && (
                   <form
                     className="profile-invite-form"
                     onSubmit={(event) => sendClaimInvitation(event, profile)}

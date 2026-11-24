@@ -212,6 +212,7 @@ function EditMyProfile() {
   }
 
   async function handlePdfRemove() {
+    if (!window.confirm("Remove this PDF from the public profile?")) return;
     setPdfError("");
     setPdfSuccess("");
     try {
@@ -227,6 +228,7 @@ function EditMyProfile() {
         pdfUrl: null,
         pdfDisplayName: null,
       }));
+      setPdfDisplayNameInput("");
       setPdfSuccess("PDF removed successfully.");
     } catch (removeError) {
       setPdfError(removeError.message);

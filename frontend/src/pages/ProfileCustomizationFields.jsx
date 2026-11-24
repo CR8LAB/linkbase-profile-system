@@ -1,4 +1,5 @@
 import PublicProfileCard from "./PublicProfileCard.jsx";
+import { API_BASE_URL } from "../apiBase.js";
 
 const fontFamilies = ["Raleway", "Arial", "Roboto", "Montserrat"];
 
@@ -168,7 +169,7 @@ function ProfileCustomizationFields({
         <h3>Profile PDF</h3>
         {profile.pdfUrl && (
           <p>
-            Current document: <a href={profile.pdfUrl} target="_blank" rel="noreferrer">View PDF</a>
+            Current document: <a href={`${API_BASE_URL}${profile.pdfUrl}`} target="_blank" rel="noreferrer">View PDF</a>
           </p>
         )}
         <div className="profile-image-controls">
@@ -182,14 +183,12 @@ function ProfileCustomizationFields({
               disabled={Boolean(pdfBusy)}
             />
           </div>
-          {profile.pdfUrl && (
-            <button type="button" className="cancel-button" onClick={onPdfRemove} disabled={Boolean(pdfBusy)}>
-              Remove PDF
-            </button>
-          )}
         </div>
         {profile.pdfUrl && (
           <>
+            <button type="button" className="profile-pdf-remove" onClick={onPdfRemove} disabled={Boolean(pdfBusy)}>
+              Remove PDF
+            </button>
             <div className="edit-form-group">
               <label htmlFor="pdfDisplayName">PDF display name</label>
               <input

@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
-import { getJwtConfig, JWT_EXPIRES_IN } from "../config/jwt.js";
-import jwt from "jsonwebtoken";
+import { getJwtConfig } from "../config/jwt.js";
+import { currentSessionTime, signSessionToken } from "../services/authSession.js";
 import { individualClaimWhere, lockProfileScope } from "../services/profileAccess.js";
 import {
   createOneTimeToken,
@@ -375,6 +375,24 @@ export function createLogoutHandler(database = prisma) {
 
 export const logout = createLogoutHandler();
 
+export function createRenewSessionHandler(jwtConfigProvider = getJwtConfig, now = currentSessionTime) {
+  return function renewSession(req, res) {
+    const time = now();
+    if (!req.authSession || time >= req.authSession.expiresAt) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    const token = signSessionToken(
+      { ...req.user, tokenVersion: req.authSession.tokenVersion },
+      jwtConfigProvider(),
+      time,
+      req.authSession.startedAt,
+    );
+    return res.set("Cache-Control", "no-store").json({ token });
+  };
+}
+
+export const renewSession = createRenewSessionHandler();
+
 export async function createUser(req, res) {
   try {
     const { email, password } = req.body;
@@ -473,18 +491,7 @@ export function createLoginHandler(
       }
 
       const jwtConfig = jwtConfigProvider();
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          role: user.role,
-          tokenVersion: user.tokenVersion,
-        },
-        jwtConfig.secret,
-        {
-          expiresIn: JWT_EXPIRES_IN,
-          algorithm: jwtConfig.algorithm,
-        },
-      );
+      const token = signSessionToken(user, jwtConfig);
 
       return res.status(200).json({
         message: "Login successful",

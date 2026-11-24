@@ -1,6 +1,7 @@
 export const JWT_ALGORITHM = "HS256";
-export const JWT_EXPIRES_IN = "20m";
-export const JWT_EXPIRES_IN_SECONDS = 20 * 60;
+export const JWT_EXPIRES_IN = "60m";
+export const JWT_EXPIRES_IN_SECONDS = 60 * 60;
+export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
 const knownPlaceholders = new Set([
   "change-me",

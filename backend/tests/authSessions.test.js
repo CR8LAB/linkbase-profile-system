@@ -8,17 +8,20 @@ import {
   initializeJwtConfig,
   JWT_EXPIRES_IN,
   JWT_EXPIRES_IN_SECONDS,
+  SESSION_MAX_AGE_SECONDS,
 } from "../src/config/jwt.js";
 import {
   createCompletePasswordResetHandler,
   createLoginHandler,
   createLogoutHandler,
+  createRenewSessionHandler,
 } from "../src/controllers/authController.js";
 import {
   createAuthenticate,
   requireAdmin,
 } from "../src/middleware/authMiddleware.js";
 import { createOneTimeToken, hashOneTimeToken } from "../src/services/authSecurity.js";
+import { currentSessionTime, getSessionTimes, signSessionToken } from "../src/services/authSession.js";
 
 initializeJwtConfig(`base64url:${randomBytes(32).toString("base64url")}`);
 
@@ -26,6 +29,9 @@ function createResponse() {
   return {
     statusCode: 200,
     body: null,
+    set() {
+      return this;
+    },
     status(code) {
       this.statusCode = code;
       return this;
@@ -142,7 +148,7 @@ async function makeUser(id, role = "CUSTOMER", password = "current-password-123"
   };
 }
 
-test("login issues 20-minute HS256 tokens and authentication rejects other algorithms", async () => {
+test("login issues 60-minute HS256 tokens and authentication rejects other algorithms", async () => {
   const user = await makeUser("customer-algorithm");
   const database = createFakeDatabase({ users: [user] });
   const loginResponse = await loginUser(database, user.email, "current-password-123");
@@ -151,7 +157,8 @@ test("login issues 20-minute HS256 tokens and authentication rejects other algor
   const decodedToken = jwt.decode(loginResponse.body.token, { complete: true });
   assert.equal(decodedToken.header.alg, "HS256");
   assert.equal(decodedToken.payload.exp - decodedToken.payload.iat, JWT_EXPIRES_IN_SECONDS);
-  assert.equal(JWT_EXPIRES_IN, "20m");
+  assert.equal(JWT_EXPIRES_IN, "60m");
+  assert.equal(decodedToken.payload.sessionStartedAt, decodedToken.payload.iat);
   assert.equal((await authenticateToken(database, loginResponse.body.token)).nextCalled, true);
   assert.doesNotThrow(() =>
     jwt.verify(loginResponse.body.token, getJwtConfig().secret, {
@@ -200,6 +207,50 @@ test("login issues 20-minute HS256 tokens and authentication rejects other algor
   const rejected = await authenticateToken(database, otherAlgorithmToken);
   assert.equal(rejected.response.statusCode, 401);
   assert.equal(rejected.nextCalled, false);
+});
+
+test("renewal slides the deadline without changing the session start or exceeding eight hours", async () => {
+  const user = await makeUser("company-admin-renewal", "COMPANY_ADMIN");
+  const database = createFakeDatabase({ users: [user] });
+  const token = (await loginUser(database, user.email, "current-password-123")).body.token;
+  const initial = jwt.decode(token);
+  const firstRenewal = initial.iat + 600;
+  let auth = await authenticateToken(database, token);
+  assert.equal(auth.nextCalled, true);
+  const renewed = createResponse();
+  createRenewSessionHandler(getJwtConfig, () => firstRenewal)(auth.request, renewed);
+  const updated = jwt.decode(renewed.body.token);
+  assert.equal(updated.exp, firstRenewal + JWT_EXPIRES_IN_SECONDS);
+  assert.equal(updated.sessionStartedAt, initial.sessionStartedAt);
+  assert.equal(updated.role, "COMPANY_ADMIN");
+  assert.equal(updated.tokenVersion, user.tokenVersion);
+  assert.equal(getSessionTimes(initial, initial.exp), null);
+
+  const now = currentSessionTime();
+  const started = now - SESSION_MAX_AGE_SECONDS + 60;
+  const nearCap = signSessionToken(user, getJwtConfig(), now - 60, started);
+  auth = await authenticateToken(database, nearCap);
+  assert.equal(auth.nextCalled, true);
+  const capped = createResponse();
+  createRenewSessionHandler(getJwtConfig, () => now)(auth.request, capped);
+  assert.equal(jwt.decode(capped.body.token).exp, started + SESSION_MAX_AGE_SECONDS);
+  const tooLate = createResponse();
+  createRenewSessionHandler(getJwtConfig, () => started + SESSION_MAX_AGE_SECONDS)(auth.request, tooLate);
+  assert.equal(tooLate.statusCode, 401);
+  assert.equal(getSessionTimes(jwt.decode(capped.body.token), started + SESSION_MAX_AGE_SECONDS), null);
+});
+
+test("legacy signed tokens retain their original deadline and can renew before it", async () => {
+  const user = await makeUser("legacy-session");
+  const database = createFakeDatabase({ users: [user] });
+  const token = jwt.sign({ userId: user.id, tokenVersion: 0 }, getJwtConfig().secret, { expiresIn: "20m" });
+  const legacy = jwt.decode(token);
+  const auth = await authenticateToken(database, token);
+  assert.deepEqual(auth.request.authSession, { startedAt: legacy.iat, expiresAt: legacy.exp, tokenVersion: 0 });
+  const response = createResponse();
+  createRenewSessionHandler(getJwtConfig, () => legacy.exp - 1)(auth.request, response);
+  assert.equal(jwt.decode(response.body.token).sessionStartedAt, legacy.iat);
+  assert.equal(getSessionTimes(legacy, legacy.exp), null);
 });
 
 test("logout invalidates the old token but leaves another customer's session valid", async () => {

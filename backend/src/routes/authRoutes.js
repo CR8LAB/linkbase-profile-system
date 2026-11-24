@@ -7,6 +7,7 @@ import {
   inviteProfileClaim,
   login,
   logout,
+  renewSession,
   requestPasswordReset,
 } from "../controllers/authController.js";
 
@@ -27,6 +28,7 @@ const router = Router();
 // Public login
 router.post("/login", loginRateLimit, loginAccountRateLimit, login);
 router.post("/logout", authenticate, logout);
+router.post("/session/renew", authenticate, renewSession);
 
 router.post(
   "/profiles/:publicId/claim-invitations",

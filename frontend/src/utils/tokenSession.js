@@ -19,6 +19,9 @@ export function getTokenSession(token, now = Date.now()) {
       expired: false,
       invalid: false,
       expiresAt: payload.exp * 1000,
+      ...(Number.isSafeInteger(payload.sessionStartedAt) && {
+        absoluteExpiresAt: (payload.sessionStartedAt + 8 * 60 * 60) * 1000,
+      }),
     };
   } catch {
     return { role: null, expired: false, invalid: true, expiresAt: null };

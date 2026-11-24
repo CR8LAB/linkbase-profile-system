@@ -452,6 +452,13 @@ export async function getCompanyProfiles(req, res) {
         phone: true,
         photoUrl: true,
 
+        company: {
+          select: {
+            name: true,
+            centralisedManagement: true,
+            administrator: { select: { email: true } },
+          },
+        },
         user: {
           select: {
             id: true,
@@ -463,7 +470,10 @@ export async function getCompanyProfiles(req, res) {
 
     return res.status(200).json({
       success: true,
-      profiles,
+      profiles: profiles.map(({ company, ...profile }) => ({
+        ...profile,
+        company: company?.centralisedManagement ? company : null,
+      })),
     });
   } catch (error) {
     console.error(error);

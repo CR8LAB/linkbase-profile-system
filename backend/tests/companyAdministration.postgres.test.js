@@ -192,6 +192,19 @@ test("the Express API enforces company administration against isolated PostgreSQ
     assert.equal(list.status, 200);
     assert.deepEqual(list.body.profiles.map((p) => p.publicId).sort(), smeProfiles.map((p) => p.publicId).sort());
     assert.equal((await request(`/profiles/${own.publicId}/editor`, { token: mayaToken })).body.profile.id, own.id);
+    assert.equal((await request(`/companies/${sme.id}/profiles`, { token: mayaToken })).status, 403);
+    const platformList = await request(`/companies/${sme.id}/profiles`, { token: adminToken });
+    const managedRow = platformList.body.profiles.find((p) => p.publicId === own.publicId);
+    assert.equal(managedRow.company.centralisedManagement, true);
+    assert.equal(managedRow.company.name, sme.name);
+    assert.equal(managedRow.company.administrator.email, mayaEmail);
+    assert.equal(managedRow.user.id, employee.id);
+    const individual = await request(`/companies/${other.id}/profiles`, { token: adminToken });
+    assert.equal(individual.body.profiles.find((p) => p.publicId === foreign.publicId).company, null);
+    const renewal = await send("/auth/session/renew", mayaToken, { role: "ADMIN", sessionStartedAt: 1 });
+    assert.equal(renewal.status, 200);
+    assert.equal(jwt.decode(renewal.body.token).role, "COMPANY_ADMIN");
+    assert.equal(jwt.decode(renewal.body.token).sessionStartedAt, jwt.decode(mayaToken).sessionStartedAt);
     const update = await send(`/profiles/${unowned.publicId}`, mayaToken, {
       fullName: "Updated", jobTitle: "Engineer", businessAddress: "42 Fixture Street", googleReviewUrl: "https://www.google.com/maps/place/Example",
     }, "PATCH");
@@ -249,6 +262,12 @@ test("the Express API enforces company administration against isolated PostgreSQ
     assert.equal(storedProfile.pdfDisplayName, "Company brochure.pdf");
     assert.equal((await send(`${editRoute}/pdf`, mayaToken, undefined, "DELETE")).status, 200);
     assert.equal((await db.profile.findUnique({ where: { id: own.id } })).pdfUrl, null);
+    assert.equal((await request(editRoute)).body.profile.pdfUrl, null);
+    assert.equal((await request(`${editRoute}/pdf/download`)).status, 404);
+    assert.equal((await send(`${editRoute}/pdf`, mayaToken, pdf)).status, 200);
+    const uploadedAgain = await db.profile.findUnique({ where: { id: own.id } });
+    assert.ok(uploadedAgain.pdfUrl && uploadedAgain.pdfUrl !== storedProfile.pdfUrl);
+    assert.equal((await send(`${editRoute}/pdf`, employeeToken, undefined, "DELETE")).status, 403);
   });
 
   await t.test("denies other companies' content and branding and blocks platform operations despite conflicting JWT claims", async () => {

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
-import { getJwtConfig, JWT_EXPIRES_IN } from "../config/jwt.js";
+import { getJwtConfig } from "../config/jwt.js";
+import { currentSessionTime, getSessionTimes } from "../services/authSession.js";
 
 // Authenticate
 
@@ -26,11 +27,12 @@ export function createAuthenticate(database = prisma, jwtConfigProvider = getJwt
     const token = authHeader.slice(7);
 
     let decoded;
+    const now = currentSessionTime();
 
     try {
       decoded = jwt.verify(token, jwtConfig.secret, {
         algorithms: [jwtConfig.algorithm],
-        maxAge: JWT_EXPIRES_IN,
+        clockTimestamp: now,
       });
     } catch (error) {
       return res.status(401).json({
@@ -38,7 +40,8 @@ export function createAuthenticate(database = prisma, jwtConfigProvider = getJwt
       });
     }
 
-    if (!Number.isSafeInteger(decoded.tokenVersion) || decoded.tokenVersion < 0) {
+    const session = getSessionTimes(decoded, now);
+    if (!session || !Number.isSafeInteger(decoded.tokenVersion) || decoded.tokenVersion < 0) {
       return res.status(401).json({
         message: "Invalid or expired token",
       });
@@ -73,6 +76,7 @@ export function createAuthenticate(database = prisma, jwtConfigProvider = getJwt
         ...(user.role === "COMPANY_ADMIN" && { companyId: user.companyId }),
       };
 
+      req.authSession = { ...session, tokenVersion: user.tokenVersion };
       return next();
     } catch (error) {
       console.error(error);

@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "../apiBase.js";
 
 export const SESSION_EXPIRED_EVENT = "linkbase:session-expired";
+export const SESSION_CHANGED_EVENT = "linkbase:session-changed";
 export const SESSION_EXPIRED_MESSAGE = "Your session has expired. Please sign in again.";
 
 export function redirectToLoginAfterExpiry(navigate) {
@@ -10,18 +11,18 @@ export function redirectToLoginAfterExpiry(navigate) {
   });
 }
 
-function hasBearerAuthorization(input, init) {
+function getBearerToken(input, init) {
   const headers = new Headers(input?.headers || undefined);
   new Headers(init?.headers || undefined).forEach((value, name) => {
     headers.set(name, value);
   });
-  return /^Bearer\s+\S+$/i.test(headers.get("Authorization") || "");
+  return /^Bearer\s+(\S+)$/i.exec(headers.get("Authorization") || "")?.[1];
 }
 
 function isProtectedApiRequest(input, apiBaseUrl) {
   try {
     const requestUrl = new URL(
-      typeof input === "string" ? input : input.url,
+      typeof input === "string" || input instanceof URL ? input : input.url,
       globalThis.location?.origin || "http://localhost",
     );
     const apiUrl = new URL(apiBaseUrl);
@@ -40,11 +41,12 @@ export function createSessionAwareFetch(
 ) {
   return async function sessionAwareFetch(input, init) {
     const response = await fetchImpl(input, init);
+    const currentToken = storage.getItem("token");
     if (
       response.status === 401 &&
       isProtectedApiRequest(input, apiBaseUrl) &&
-      hasBearerAuthorization(input, init) &&
-      storage.getItem("token")
+      currentToken &&
+      currentToken === getBearerToken(input, init)
     ) {
       storage.removeItem("token");
       onExpired();

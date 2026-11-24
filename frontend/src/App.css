@@ -1698,6 +1698,54 @@
   white-space: nowrap;
 }
 
+.profile-pdf-remove {
+  display: block;
+  margin: 12px 0 16px;
+  padding: 8px 12px;
+  border: 1px solid #b42318;
+  border-radius: 6px;
+  background: white;
+  color: #b42318;
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-pdf-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.session-expiry-warning {
+  position: fixed;
+  inset: auto 16px 16px auto;
+  z-index: 1200;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid #d6ac52;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #3c2c0d;
+}
+
+.session-expiry-warning p {
+  flex: 1 1 250px;
+  margin: 0;
+}
+
+.session-expiry-warning button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: #101d3b;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
 .company-administration {
   margin: 0 0 12px;
   padding: 20px;

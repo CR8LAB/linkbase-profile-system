@@ -77,7 +77,7 @@ test("the Express API enforces company administration against isolated PostgreSQ
   const passwordHash = await bcrypt.hash(password, 4);
   const createUser = (name, role) => db.user.create({ data: { email: email(name), passwordHash, role } });
   const [sme, other, otherManaged, admin, employee, customer] = await Promise.all([
-    db.company.create({ data: { name: `SME-${suffix}`, centralisedManagement: true } }),
+    db.company.create({ data: { name: `SME-${suffix}` } }),
     db.company.create({ data: { name: `Other-${suffix}` } }),
     db.company.create({ data: { name: `Other managed-${suffix}`, centralisedManagement: true } }),
     createUser("admin", "ADMIN"), createUser("employee", "CUSTOMER"), createUser("customer", "CUSTOMER"),
@@ -99,6 +99,7 @@ test("the Express API enforces company administration against isolated PostgreSQ
   const addLink = ({ id }) => db.socialLink.create({ data: { profileId: id, platform: "Website", url: "https://example.test" } });
   const [ownLink, foreignLink] = await Promise.all([addLink(own), addLink(foreignManaged)]);
   const inviteUrl = `/auth/companies/${sme.id}/admin-invitations`;
+  const policyUrl = `/companies/${sme.id}/centralised-management`;
   const mayaEmail = email("maya");
   const invitationToken = (mail) => {
     const link = new URL(mail.text.match(/^http[^\n]+$/m)[0]);
@@ -108,6 +109,50 @@ test("the Express API enforces company administration against isolated PostgreSQ
   let mayaToken;
   let maya;
 
+  await t.test("platform administrators can inspect and enable company management without changing ownership", async () => {
+    const listing = "/companies/administration";
+    assert.equal((await request(listing)).status, 401);
+    assert.equal((await request(listing, { token: employeeToken })).status, 403);
+    assert.equal((await send(policyUrl, employeeToken, { enabled: true }, "PATCH")).status, 403);
+    assert.equal((await send(policyUrl, adminToken, { enabled: "true" }, "PATCH")).status, 400);
+    assert.equal((await send("/companies/missing/centralised-management", adminToken, { enabled: true }, "PATCH")).status, 404);
+    const publicListing = await request("/companies");
+    assert.equal(Object.hasOwn(publicListing.body.companies.find(company => company.id === sme.id), "administrator"), false);
+
+    const before = await request(listing, { token: adminToken });
+    const company = before.body.companies.find(item => item.id === sme.id);
+    assert.equal(company.centralisedManagement, false);
+    assert.equal(company.profileCount, 9);
+    assert.equal(company.administrator, null);
+    assert.equal(company.invitation, null);
+    assert.equal((await request(`/profiles/${own.publicId}/statistics`, { token: employeeToken })).status, 200);
+
+    const updated = await send(policyUrl, adminToken, { enabled: true }, "PATCH");
+    assert.equal(updated.status, 200);
+    assert.equal(updated.body.company.centralisedManagement, true);
+    assert.equal(updated.body.company.profileCount, 9);
+    assert.equal((await db.company.findUnique({ where: { id: other.id } })).centralisedManagement, false);
+    assert.equal((await db.profile.findUnique({ where: { id: own.id } })).userId, employee.id);
+    assert.equal((await request(`/profiles/${own.publicId}/statistics`, { token: employeeToken })).status, 403);
+  });
+
+  await t.test("disabling management invalidates only that company's pending administrator invitation", async () => {
+    const token = authSecurity.createOneTimeToken();
+    const invitation = await db.companyAdminInvitation.create({ data: {
+      companyId: otherManaged.id, email: email("other-pending"),
+      tokenHash: authSecurity.hashOneTimeToken(token), expiresAt: new Date(Date.now() + 60_000),
+    } });
+    const url = `/companies/${otherManaged.id}/centralised-management`;
+    const disabled = await send(url, adminToken, { enabled: false }, "PATCH");
+    assert.equal(disabled.status, 200);
+    assert.equal(disabled.body.company.invitation.status, "inactive");
+    assert.ok((await db.companyAdminInvitation.findUnique({ where: { id: invitation.id } })).usedAt);
+    assert.equal((await db.company.findUnique({ where: { id: sme.id } })).centralisedManagement, true);
+    const reenabled = await send(url, adminToken, { enabled: true }, "PATCH");
+    assert.equal(reenabled.status, 200);
+    assert.equal(reenabled.body.company.invitation.status, "inactive");
+  });
+
   await t.test("requires platform admin and binds the invitation, email, scope and role server-side", async () => {
     assert.equal((await send(inviteUrl, employeeToken, { email: mayaEmail })).status, 403);
     assert.equal((await send(inviteUrl, adminToken, { email: employee.email })).status, 409);
@@ -116,6 +161,11 @@ test("the Express API enforces company administration against isolated PostgreSQ
     assert.equal((await send(inviteUrl, adminToken, { email: mayaEmail })).status, 202);
     assert.equal(sent.at(-1).to, mayaEmail);
     const token = invitationToken(sent.at(-1));
+    const pending = await request("/companies/administration", { token: adminToken });
+    const pendingInvite = pending.body.companies.find(company => company.id === sme.id).invitation;
+    assert.equal(pendingInvite.status, "pending");
+    assert.equal(pendingInvite.email, mayaEmail);
+    assert.deepEqual(Object.keys(pendingInvite).sort(), ["email", "expiresAt", "status"]);
     const invitation = await db.companyAdminInvitation.findUnique({ where: { tokenHash: authSecurity.hashOneTimeToken(token) } });
     assert.equal(invitation.companyId, sme.id);
     assert.equal((await send("/auth/claim-company-admin", null, { token: oldToken, password })).status, 400);
@@ -124,6 +174,10 @@ test("the Express API enforces company administration against isolated PostgreSQ
     maya = await db.user.findUnique({ where: { email: mayaEmail } });
     assert.equal(maya.role, "COMPANY_ADMIN");
     assert.equal(maya.companyId, sme.id);
+    const accepted = await request("/companies/administration", { token: adminToken });
+    const administered = accepted.body.companies.find(company => company.id === sme.id);
+    assert.deepEqual(administered.administrator, { email: mayaEmail });
+    assert.equal(administered.invitation.status, "accepted");
     assert.equal((await send("/auth/claim-company-admin", null, { token, password })).status, 400);
     const login = await send("/auth/login", null, { email: mayaEmail, password, role: "ADMIN" });
     assert.equal(login.status, 200);
@@ -219,6 +273,8 @@ test("the Express API enforces company administration against isolated PostgreSQ
     assert.equal((await send(`/profiles/${own.publicId}/assign`, token, { userId: customer.id }, "PATCH")).status, 403);
     assert.equal((await send("/companies", token, { name: "Denied" })).status, 403);
     assert.equal((await send(`/companies/${sme.id}`, token, { name: "Denied", fontFamily: "Arial" }, "PATCH")).status, 403);
+    assert.equal((await send(policyUrl, token, { enabled: false }, "PATCH")).status, 403);
+    assert.equal((await request("/companies/administration", { token })).status, 403);
     assert.equal((await send(`/companies/${sme.id}`, token, undefined, "DELETE")).status, 403);
     assert.equal((await request("/admin/summary", { token })).status, 403);
     assert.equal((await request(`/companies/${otherManaged.id}/profiles`, { token })).status, 403);

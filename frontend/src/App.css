@@ -1694,6 +1694,80 @@
   cursor: pointer;
 }
 
+.company-profile-count {
+  white-space: nowrap;
+}
+
+.company-administration {
+  margin: 0 0 12px;
+  padding: 20px;
+  border: 1px solid #dce1e9;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #f8fafc;
+}
+
+.company-administration h4,
+.company-administration h5,
+.company-administration-dialog h4 {
+  color: #101d3b;
+}
+
+.company-administration-policy,
+.company-administration-invite,
+.company-administration-dialog form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.company-administration-policy {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.company-administration-policy p,
+.company-administration-invite .edit-form-group {
+  margin: 0;
+}
+
+.company-administration-invite {
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.company-administration-invite .edit-form-group {
+  flex: 0 1 280px;
+}
+
+.company-administration-invite button,
+.company-administration-dialog button:last-child {
+  background: #101d3b;
+  color: white;
+}
+
+.company-administration button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.company-administration-dialog {
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #334155;
+}
+
+.company-administration-dialog::backdrop {
+  background: rgb(15 23 42 / 50%);
+}
+
+.company-administration-dialog form {
+  justify-content: flex-end;
+}
+
 .customer-management-row {
   align-items: flex-start;
 }

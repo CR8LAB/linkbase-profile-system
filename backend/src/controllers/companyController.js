@@ -112,3 +112,85 @@ export async function getCompanies(req, res) {
     });
   }
 }
+
+const companyAdministrationSelect = {
+  id: true,
+  name: true,
+  logoUrl: true,
+  fontFamily: true,
+  centralisedManagement: true,
+  administrator: { select: { email: true } },
+  adminInvitations: {
+    take: 1,
+    orderBy: [{ expiresAt: "desc" }, { id: "desc" }],
+    select: { email: true, usedAt: true, expiresAt: true },
+  },
+  _count: { select: { profiles: true } },
+};
+
+function formatCompanyAdministration({ adminInvitations, _count, ...company }) {
+  const [latest] = adminInvitations;
+  let invitation = null;
+  if (latest) {
+    let status = "pending";
+    if (latest.usedAt) {
+      status = company.administrator?.email === latest.email ? "accepted" : "inactive";
+    } else if (latest.expiresAt <= new Date()) {
+      status = "expired";
+    } else if (!company.centralisedManagement) {
+      status = "inactive";
+    }
+    invitation = { email: latest.email, expiresAt: latest.expiresAt, status };
+  }
+  return { ...company, profileCount: _count.profiles, invitation };
+}
+
+export async function listCompanyAdministration(req, res) {
+  try {
+    const companies = await prisma.company.findMany({
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: companyAdministrationSelect,
+    });
+    return res.set("Cache-Control", "no-store")
+      .json({ success: true, companies: companies.map(formatCompanyAdministration) });
+  } catch (error) {
+    console.error("Company administration list failed:", error);
+    return res.status(500).json({ message: "Could not load company administration" });
+  }
+}
+
+export async function updateCentralisedManagement(req, res) {
+  const { companyId } = req.params;
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ message: "Centralised management requires an enabled or disabled state" });
+  }
+
+  try {
+    const company = await prisma.$transaction(async (tx) => {
+      // This update locks the same company row as invitation issue and redemption.
+      await tx.company.update({
+        where: { id: companyId },
+        data: { centralisedManagement: enabled },
+        select: { id: true },
+      });
+      if (!enabled) {
+        const now = new Date();
+        await tx.companyAdminInvitation.updateMany({
+          where: { companyId, usedAt: null, expiresAt: { gt: now } },
+          data: { usedAt: now },
+        });
+      }
+      return tx.company.findUniqueOrThrow({
+        where: { id: companyId },
+        select: companyAdministrationSelect,
+      });
+    });
+    return res.set("Cache-Control", "no-store")
+      .json({ success: true, company: formatCompanyAdministration(company) });
+  } catch (error) {
+    if (error.code === "P2025") return res.status(404).json({ message: "Company not found" });
+    console.error("Centralised management update failed:", error);
+    return res.status(500).json({ message: "Could not update centralised management" });
+  }
+}

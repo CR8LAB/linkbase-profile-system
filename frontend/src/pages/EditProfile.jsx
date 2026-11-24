@@ -248,7 +248,10 @@ function EditProfile() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(Object.fromEntries(
-            Object.entries(profile).filter(([field]) => field !== "backgroundImageUrl" && !(companyAdmin && field === "companyId")),
+            // Unset values use editor defaults and aren't part of the update.
+            Object.entries(profile).filter(([field, value]) =>
+              value !== null && field !== "backgroundImageUrl" && !(companyAdmin && field === "companyId"),
+            ),
           )),
         },
       );

@@ -1,0 +1,285 @@
+.workspace-theme:has(.workspace-navigation) {
+  --workspace-scheme: light;
+  --workspace-background: #f4f6fa;
+  --workspace-surface: #ffffff;
+  --workspace-raised: #f8fafc;
+  --workspace-inset: #e8edf5;
+  --workspace-heading: #101d3b;
+  --workspace-text: #334155;
+  --workspace-muted: #53647a;
+  --workspace-border: #dce1e9;
+  --workspace-control-border: #788798;
+  --workspace-link: #174e61;
+  --workspace-link-surface: #eaf1f3;
+  --workspace-focus: #245c72;
+  --workspace-action: #101d3b;
+  --workspace-action-hover: #243657;
+  --workspace-on-action: #ffffff;
+  --workspace-success: #166534;
+  --workspace-success-surface: #dcfce7;
+  --workspace-danger: #a52219;
+  --workspace-danger-surface: #fff0ef;
+  --workspace-warning: #5c3a0d;
+  --workspace-warning-surface: #fff3d4;
+  --workspace-warning-border: #a66b19;
+  --workspace-hero: #101d3b;
+  --workspace-hero-text: #ffffff;
+  --workspace-hero-muted: #c4cede;
+  --workspace-hero-accent: #80bfff;
+}
+
+.workspace-theme[data-workspace-theme="dark"]:has(.workspace-navigation) {
+  --workspace-scheme: dark;
+  --workspace-background: #101827;
+  --workspace-surface: #182437;
+  --workspace-raised: #202e43;
+  --workspace-inset: #293a50;
+  --workspace-heading: #edf4ff;
+  --workspace-text: #dce7f6;
+  --workspace-muted: #a9bacf;
+  --workspace-border: #3a4d64;
+  --workspace-control-border: #667a94;
+  --workspace-link: #a1dce3;
+  --workspace-link-surface: #243e4b;
+  --workspace-focus: #a1dce3;
+  --workspace-action: #afcbed;
+  --workspace-action-hover: #d0e3fa;
+  --workspace-on-action: #101d3b;
+  --workspace-success: #a0e9b7;
+  --workspace-success-surface: #203d32;
+  --workspace-danger: #ffb7b0;
+  --workspace-danger-surface: #452b34;
+  --workspace-warning: #ffe0a1;
+  --workspace-warning-surface: #3c2f24;
+  --workspace-warning-border: #b98f53;
+  --workspace-hero: #253d60;
+}
+
+.workspace-theme :is(.admin-workspace, .customer-dashboard, .customer-edit-page) {
+  background: var(--workspace-background);
+  color: var(--workspace-text);
+  color-scheme: var(--workspace-scheme);
+}
+
+.workspace-theme :is(
+  .workspace-navigation, .stat-card, .profile-visit-stat-card, .profile-card,
+  .edit-profile-form, .customer-info-card, .customer-action-card,
+  .customer-edit-card, .company-administration-dialog, .qr-physical-export
+) {
+  background: var(--workspace-surface);
+  border-color: var(--workspace-border);
+}
+
+.workspace-theme .company-administration {
+  background: var(--workspace-raised);
+  border-color: var(--workspace-border);
+}
+
+.workspace-theme :is(
+  .admin-qr-management, .customer-profile-summary, .customer-footer,
+  .customer-edit-card hr, .qr-physical-controls fieldset,
+  .admin-data-list, .admin-data-row, .social-link-item
+) {
+  border-color: var(--workspace-border);
+}
+
+.workspace-theme .customer-edit-page > .workspace-navigation {
+  border-color: var(--workspace-border);
+}
+
+.workspace-theme :is(
+  .workspace-navigation-brand, .admin-header h2, .dashboard-welcome h1,
+  .profile-visit-statistics > h3, .profile-visit-stat-card p,
+  .stat-card p, .company-selector label, .profiles-list > h3,
+  .profile-card h3, .edit-profile-form h3, .customer-loading,
+  .customer-edit-card h1, .customer-edit-card .edit-form-group label,
+  .customer-photo-preview, .customer-photo-controls h3, .admin-data-section h3,
+  .company-administration h4, .company-administration h5, .company-administration-dialog h4,
+  .profile-editor-fields > h3, .admin-qr-management > h3
+) {
+  color: var(--workspace-heading);
+}
+
+.workspace-theme :is(
+  .admin-header span, .dashboard-welcome p, .profile-visit-stat-card h4,
+  .stat-card h3, .profile-card p, .assigned-email, .admin-qr-management > p,
+  .customer-header p, .customer-section-heading p, .customer-action-card p,
+  .customer-profile-summary p, .customer-details span, .customer-footer,
+  .customer-edit-card > p, .customer-edit-card .profile-id-note,
+  .customer-photo-controls p, .admin-data-row > span, .customer-assignment-summary,
+  .profile-upload-note, .qr-export-note
+) {
+  color: var(--workspace-muted);
+}
+
+.workspace-theme :is(
+  .workspace-navigation-link, .profile-invite-form label, .edit-form-group label,
+  .admin-data-row, .company-administration-dialog
+) {
+  color: var(--workspace-text);
+}
+
+.workspace-theme :is(
+  .admin-content a:not(.public-profile-preview *), .customer-main a,
+  .customer-action-card button, .customer-edit-card a:not(.public-profile-preview *),
+  .invite-feedback
+) {
+  color: var(--workspace-link);
+}
+
+.workspace-theme .workspace-navigation-link:is(:hover, .active),
+.workspace-theme :is(.workspace-theme-toggle, .workspace-logout-button):hover {
+  background: var(--workspace-link-surface);
+  color: var(--workspace-link);
+}
+
+.workspace-navigation-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+.workspace-theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  min-height: 40px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: 6px;
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.workspace-theme :is(
+  .admin-workspace, .customer-edit-page, .customer-dashboard
+) :is(input, select, textarea) {
+  background: var(--workspace-surface);
+  border-color: var(--workspace-control-border);
+  color: var(--workspace-text);
+}
+
+.workspace-theme :is(.admin-workspace, .customer-edit-page, .customer-dashboard)
+  :is(input, textarea)::placeholder {
+  color: var(--workspace-muted);
+  opacity: 1;
+}
+
+.workspace-theme :is(
+  .workspace-logout-button, .company-edit-button, .company-edit-controls button,
+  .customer-management-row > button, .social-back-button, .qr-export-controls button,
+  .profile-editor-fields > .cancel-button
+) {
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-control-border);
+  color: var(--workspace-text);
+}
+
+.workspace-theme :is(
+  .profile-edit-button, .edit-form-actions button, .profile-image-controls label,
+  .customer-primary-button, .admin-form-narrow > button,
+  .customer-assignment-controls button, .company-administration-invite button,
+  .company-administration-dialog button:last-child, .qr-export-controls button[aria-pressed="true"],
+  .social-link-create-row button
+),
+.workspace-theme:has(.workspace-navigation) .session-expiry-warning button {
+  background: var(--workspace-action);
+  border-color: var(--workspace-action);
+  color: var(--workspace-on-action);
+}
+
+.workspace-theme :is(
+  .profile-edit-button, .edit-form-actions button, .customer-primary-button,
+  .workspace-theme-toggle, .company-edit-button, .admin-form-narrow > button,
+  .customer-assignment-controls button
+):hover {
+  filter: brightness(1.12);
+}
+
+.workspace-theme :is(.profile-edit-button, .edit-form-actions button, .customer-primary-button):hover {
+  background: var(--workspace-action-hover);
+}
+
+.workspace-theme :is(.edit-form-actions .cancel-button, .profile-card small, .profile-avatar-placeholder,
+  .customer-account-avatar, .customer-profile-placeholder, .customer-action-icon, .customer-photo-preview) {
+  background: var(--workspace-inset);
+  color: var(--workspace-heading);
+}
+
+.workspace-theme :is(.profile-pdf-remove, .social-link-item button) {
+  background: var(--workspace-danger-surface);
+  border-color: var(--workspace-danger);
+  color: var(--workspace-danger);
+}
+
+.workspace-theme :is(.admin-workspace, .customer-edit-page, .customer-dashboard) .error-message {
+  color: var(--workspace-danger);
+}
+
+.workspace-theme :is(.admin-workspace, .customer-edit-page, .customer-dashboard) .success-message {
+  color: var(--workspace-success);
+}
+
+.workspace-theme :is(.status-assigned, .customer-status) {
+  background: var(--workspace-success-surface);
+  color: var(--workspace-success);
+}
+
+.workspace-theme .status-unassigned,
+.workspace-theme:has(.workspace-navigation) .session-expiry-warning {
+  background: var(--workspace-warning-surface);
+  border-color: var(--workspace-warning-border);
+  color: var(--workspace-warning);
+}
+
+.workspace-theme .customer-welcome {
+  background: var(--workspace-hero);
+  color: var(--workspace-hero-text);
+}
+
+.workspace-theme .customer-welcome p:last-child {
+  color: var(--workspace-hero-muted);
+}
+
+.workspace-theme :is(.customer-eyebrow, .customer-welcome-icon) {
+  color: var(--workspace-hero-accent);
+}
+
+.workspace-theme :is(.admin-workspace, .customer-edit-page, .customer-dashboard)
+  :is(a, button, input, select, textarea, summary):focus-visible:not(.public-profile-preview *) {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 2px;
+}
+
+/* Keep the preview canvas and its public card in the original colour scheme. */
+.workspace-theme .profile-editor-preview {
+  color-scheme: light;
+  color: #000000;
+}
+
+@media (max-width: 600px) {
+  .workspace-navigation-actions {
+    gap: 6px;
+  }
+
+  .workspace-theme-toggle {
+    min-height: 44px;
+    width: 44px;
+  }
+}
+
+@media (601px <= width <= 700px) {
+  .workspace-navigation {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .workspace-navigation nav {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+  }
+}

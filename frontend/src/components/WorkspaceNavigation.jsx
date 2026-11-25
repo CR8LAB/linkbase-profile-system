@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { FaMoon, FaSun } from "react-icons/fa";
 import { API_BASE_URL } from "../apiBase.js";
 import { SESSION_CHANGED_EVENT } from "../utils/sessionExpiry.js";
+import { WorkspaceThemeContext } from "../utils/workspaceTheme.js";
 
 const navigationByRole = {
   ADMIN: [
@@ -22,6 +24,8 @@ const navigationByRole = {
 function WorkspaceNavigation({ role }) {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
+  const { theme, toggleTheme } = useContext(WorkspaceThemeContext);
+  const darkMode = theme === "dark";
 
   async function logout() {
     if (loggingOut) return;
@@ -106,14 +110,26 @@ function WorkspaceNavigation({ role }) {
           ),
         )}
       </nav>
-      <button
-        type="button"
-        className="workspace-logout-button"
-        onClick={logout}
-        disabled={loggingOut}
-      >
-        {loggingOut ? "Logging out..." : "Log Out"}
-      </button>
+      <div className="workspace-navigation-actions">
+        <button
+          type="button"
+          className="workspace-theme-toggle"
+          aria-label="Dark mode"
+          aria-pressed={darkMode}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={toggleTheme}
+        >
+          {darkMode ? <FaSun aria-hidden="true" /> : <FaMoon aria-hidden="true" />}
+        </button>
+        <button
+          type="button"
+          className="workspace-logout-button"
+          onClick={logout}
+          disabled={loggingOut}
+        >
+          {loggingOut ? "Logging out..." : "Log Out"}
+        </button>
+      </div>
     </header>
   );
 }

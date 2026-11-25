@@ -40,12 +40,18 @@ test("the shared editor and navigation show the company administrator's allowed 
     sessionAs("COMPANY_ADMIN");
     const dashboard = render(App, null, "/admin");
     assert.match(dashboard, /Company profiles/);
+    assert.match(dashboard, /aria-label="Dark mode" aria-pressed="false"/);
     assert.doesNotMatch(dashboard, /Create Profile|\/admin\/companies|\/admin\/customers/);
     assert.doesNotMatch(render(App, null, "/admin/profiles/create"), /Create a New Profile/);
     assert.match(render(App, null, "/admin/profiles/fixture/edit"), /Loading profile/);
 
     sessionAs("ADMIN");
     assert.match(render(App, null, "/admin/profiles/create"), /Create a New Profile/);
+    assert.match(render(App, null, "/admin"), /aria-label="Dark mode"/);
+
+    sessionAs("CUSTOMER");
+    assert.match(render(App, null, "/dashboard"), /aria-label="Dark mode"/);
+    assert.doesNotMatch(render(App, null, "/profile/fixture"), /aria-label="Dark mode"/);
   } finally {
     if (originalStorage) Object.defineProperty(globalThis, "sessionStorage", originalStorage);
     else delete globalThis.sessionStorage;
